@@ -130,11 +130,33 @@
     });
     if (xs.length < 2) return false;
     var pooledEff = num(res.or) != null ? Number(res.or) : null;
-    var traces = [{
+    var maxSE = Math.max.apply(null, ys);
+    var traces = [];
+    // Funnel pseudo-confidence-limit guide lines (the inverted-V that gives the
+    // plot its name): center +/- z*SE, from apex (SE=0) to the base (max SE).
+    // On the log-scale (binary) axis the limits are computed on the log scale
+    // and back-transformed via exp; on the linear (continuous) axis directly.
+    if (pooledEff != null) {
+      var logCenter = cont ? pooledEff : Math.log(pooledEff);
+      var baseSE = maxSE * 1.06;
+      var lim = function (se, z, sign) { var v = logCenter + sign * z * se; return cont ? v : Math.exp(v); };
+      [{ z: 1.96, dash: "dot" }, { z: 3.29, dash: "dash" }].forEach(function (b, i) {
+        ["L", "R"].forEach(function (side) {
+          var sign = side === "L" ? -1 : 1;
+          traces.push({
+            x: [pooledEff, lim(baseSE, b.z, sign)], y: [0, baseSE],
+            mode: "lines", type: "scatter",
+            line: { color: "#cbd5e1", width: 1, dash: b.dash },
+            hoverinfo: "skip", showlegend: i === 0 && side === "L",
+            name: "95% / 99% pseudo-CI"
+          });
+        });
+      });
+    }
+    traces.push({
       x: xs, y: ys, text: txt, mode: "markers", type: "scatter",
       marker: { size: 9, color: "#2454a6", opacity: 0.8 }, hovertemplate: "%{text}: %{x:.2f}, SE %{y:.3f}<extra></extra>", showlegend: false
-    }];
-    var maxSE = Math.max.apply(null, ys);
+    });
     var layout = Object.assign({}, LIGHT, {
       title: { text: opts.label ? "Funnel plot — " + opts.label : "Funnel plot", font: { size: 13 } },
       xaxis: { title: { text: (res.effectMeasure || "effect") + (cont ? "" : " (log scale)") }, type: cont ? "linear" : "log", gridcolor: "#e5e7eb", linecolor: "#94a3b8" },
