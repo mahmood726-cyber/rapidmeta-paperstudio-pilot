@@ -1,6 +1,9 @@
 # Headless verification of the Paper Studio pilot.
 import io, sys, time, pathlib
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+# Only rewrap stdout when run as a script. Reassigning sys.stdout at import time
+# breaks pytest's output capture if this module is ever imported (see lessons.md).
+if __name__ == "__main__":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
