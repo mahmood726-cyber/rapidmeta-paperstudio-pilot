@@ -561,11 +561,34 @@ try:
         return out;
     """)
     check("#8 Every example starter is gate-safe (no blocking placeholder tokens)", len(unsafe) == 0, str(unsafe))
-    nofloor = d.execute_script("""
-        var r=PaperStudio.runReadinessCheck('clean');
-        return r.issues.filter(function(i){return i.field==='studentText.coverFinding' && i.level==='error';}).length;
+    # NOTE: with the Phase-2b substantive gate, an unedited accepted starter is intentionally
+    # blocked (anti-duplication); it passes only once the student edits it. (Tested in Gate 4a.)
+    gate_dup = d.execute_script("""
+        var r1=PaperStudio.runReadinessCheck('clean');   // coverFinding still holds the verbatim starter
+        var blockedUnedited=r1.issues.some(function(i){return i.field==='studentText.coverFinding' && i.level==='error' && /own words/i.test(i.msg);});
+        var box=document.querySelector('[data-field="studentText.coverFinding"]');
+        box.innerText='In these high-risk kidney patients, finerenone appears to lower cardiovascular events by a small amount, and the moderate certainty means we should stay cautious about the exact size.';
+        box.dispatchEvent(new InputEvent('input',{bubbles:true}));
+        var r2=PaperStudio.runReadinessCheck('clean');
+        var passesEdited=!r2.issues.some(function(i){return i.field==='studentText.coverFinding' && i.level==='error';});
+        return {blockedUnedited:blockedUnedited, passesEdited:passesEdited};
     """)
-    check("#8 An accepted example satisfies the field word-floor (does not self-block)", nofloor == 0, f"coverFinding errors={nofloor}")
+    check("Gate 4a: an unedited accepted starter is blocked; an edited one passes (anti-duplication)",
+          gate_dup["blockedUnedited"] and gate_dup["passesEdited"], str(gate_dup))
+    gate_sig = d.execute_script("""
+        RapidMeta.state.results={or:'1.05',lci:'0.85',uci:'1.30',i2:'10',k:3,n:'500',confLevel:95};
+        PaperStudio.loadRapidMetaData();
+        var box=document.querySelector('[data-field="studentText.forestInterpretation"]');
+        box.innerText='The result was statistically significant and favoured the treatment over placebo for this outcome overall, which is reassuring.';
+        box.dispatchEvent(new InputEvent('input',{bubbles:true}));
+        var crossesBlocked=PaperStudio.runReadinessCheck('clean').issues.some(function(i){return i.field==='studentText.forestInterpretation' && /no-effect line/.test(i.msg);});
+        RapidMeta.state.results={or:'0.80',lci:'0.70',uci:'0.92',i2:'10',k:3,n:'500',confLevel:95};
+        PaperStudio.loadRapidMetaData();
+        var noCross=!PaperStudio.runReadinessCheck('clean').issues.some(function(i){return i.field==='studentText.forestInterpretation' && /no-effect line/.test(i.msg);});
+        return {crossesBlocked:crossesBlocked, noCross:noCross};
+    """)
+    check("Gate 4b: 'significant' blocked when the CI crosses null, allowed when it does not",
+          gate_sig["crossesBlocked"] and gate_sig["noCross"], str(gate_sig))
     exhid = d.execute_script("""
         document.body.classList.add('export-clean-pdf');
         var b=document.querySelector('#paperCanvas .use-example:not([hidden])');
