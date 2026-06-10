@@ -428,6 +428,8 @@
     html += box("studentText.abstractObjective", "Objective", "This short review aimed to assess whether...", "1 sentence",
       "State the question in one sentence: did the intervention help, for this outcome, in this population?",
       "This short review aimed to assess whether the intervention improves the main outcome compared with the comparator in this population.");
+    html += example("We assessed whether finerenone reduces cardiovascular events compared with placebo in adults with CKD and type 2 diabetes.",
+      "We looked at whether the drug works.");
     html += '<p><strong>Methods.</strong> A rapid systematic review and ' + esc(a.model).toLowerCase() +
       ' meta-analysis combined ' + auto("analysis.kStudies") + ' studies (' + auto("analysis.totalParticipants") + ' participants) for ' + auto("pico.primaryOutcome", "the primary outcome") + '.</p>';
     html += '<p><strong>Results.</strong> ' + abstractResultsProse() + '</p>';
@@ -448,6 +450,8 @@
     html += box("studentText.introductionInterventionRationale", "Why this intervention might help", auto("pico.intervention", "[Intervention]") + " may improve outcomes by... However, uncertainty remained because...", "~2-3 sentences",
       "Say how the treatment could work, then note what was still unknown before this review.",
       "The intervention may improve outcomes by acting on a mechanism relevant to this condition. Before this review, however, it was unclear how large and how reliable that benefit was across different patients.");
+    html += example("Finerenone blocks mineralocorticoid receptors, which may reduce the inflammation and scarring that drive heart and kidney damage; how much that helps across trials was unclear before this review.",
+      "The drug might help the heart.");
     html += box("studentText.introductionWhyReviewNeeded", "Why combining studies is useful here", "Combining studies is useful here because... Therefore, this short paper asks whether...", "~2-3 sentences",
       "Explain that combining trials gives a more precise answer than any single trial, then state your question.",
       "Combining the available studies is useful here because each single study on its own is too small to give a precise answer. Pooling them gives a clearer estimate, so this short paper asks whether the intervention improves the main outcome.");
@@ -561,12 +565,18 @@
     html += box("studentText.discussionClinicalMeaning", "Clinical meaning", "This would matter clinically if... For a doctor or patient it would / might / would not change practice because...", "~2-3 sentences",
       "This matters only if the effect is real and big enough. Look at the estimate AND the certainty, then say whether it would change what a doctor or patient does.",
       "This would matter clinically only if the effect is both real and large enough to notice. Considering the estimate together with the certainty, it may or may not be enough to change what a doctor or patient decides.");
+    html += example("If the benefit is real, preventing cardiovascular events in such high-risk patients would matter to doctors and patients; but the moderate certainty means it should inform practice rather than dictate it.",
+      "This could be useful for patients.");
     html += box("studentText.discussionComparison", "Comparison with other evidence", "These findings are consistent with / differ from...", "1-2 sentences",
       "Do your results agree with guidelines or other reviews you know of? Say so.",
       "These findings appear broadly consistent with what other reviews and guidelines report, although direct comparison is limited by differences in the patients and outcomes studied.");
+    html += example("These results agree with the direction of the individual trial reports and current guideline signals for this drug class.",
+      "Other studies found similar things.");
     html += box("studentText.discussionStrengths", "Strengths", "A strength of this review is...", "1-2 sentences",
       "What did this review do well — e.g. combining all major trials, large total sample, consistent results?",
       "A strength of this review is that it brings together the main available trials into a single estimate, giving a clearer overall picture than any one study alone.");
+    html += example("A strength is that the review pools the major randomised trials into one estimate, giving more precision than any single trial alone.",
+      "This review has several strengths.");
     html += box("studentText.discussionLimitations", "Main limitation", "The main limitation is...", "~3-4 sentences",
       "Be honest about the biggest weakness (few studies, risk of bias, short follow-up, indirect population) and how it affects trust in the result.",
       "The main limitation is that only a small number of trials contributed, so the pooled estimate is imprecise and the confidence interval is fairly wide. The included trials may also differ from everyday patients in important ways, which limits how widely the result applies. Finally, as a rapid review the search was lighter than a full systematic review, so a relevant study could have been missed.");
@@ -586,9 +596,13 @@
     html += box("studentText.reflectionLearning", "The most important thing I learned", "The most important thing I learned was...", "1-2 sentences",
       "Write one thing you understand now that you did not before you started.",
       "The most important thing I learned was how much the certainty of the evidence matters, not just the size of the effect, when deciding how strongly to state a conclusion.");
+    html += example("I learned that the certainty rating, not just the effect size, decides how strongly I can word a conclusion.",
+      "I learned a lot about meta-analysis.");
     html += box("studentText.reflectionMostTrusted", "The evidence I trust most", "The part of the evidence I trust most is...", "1-2 sentences",
       "Name the part of your evidence you believe most, and say why (e.g. many studies, consistent results, low risk of bias).",
       "The part of the evidence I trust most is the pooled estimate for the main outcome, because it draws on the largest trials and their results pointed in a similar direction.");
+    html += example("I trust the pooled primary-outcome estimate most, because it draws on the largest trials and they pointed the same way.",
+      "I trust the results.");
     html += box("studentText.reflectionLeastConfident", "Where I am least confident", "The part I am least confident about is...", "1-2 sentences",
       "Naming what you are unsure about is a sign of good scientific judgement — it is required, and it is one of the most valuable lines you will write.",
       "The part I am least confident about is whether the result applies to patients who were underrepresented in the trials, because there were few of them and the follow-up was relatively short.");
