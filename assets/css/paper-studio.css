@@ -159,6 +159,35 @@
 .nav-item.nav-done .nav-label { color: #94a3b8; }
 .nav-item:focus-visible { outline: 3px solid var(--paper-accent) !important; outline-offset: 1px; }
 
+/* ---- one-section wizard (Feature C) ---- */
+.ps-wizard-bar { background: #f8fafc; border: 1px solid var(--paper-border); border-radius: var(--paper-radius-md); padding: 0.7rem 0.9rem; margin: 0 0 1.4rem; }
+.ps-wizard-bar.ps-wizard-bottom { margin: 1.6rem 0 0; }
+.ps-wizard-row { display: flex; align-items: center; gap: 0.9rem; }
+.ps-wizard-mid { flex: 1 1 auto; }
+.ps-step-label { font-weight: 800; font-size: 0.95rem; color: var(--paper-ink); }
+.ps-progress-wrap { height: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; margin-top: 0.45rem; }
+.ps-progress-bar { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #3b82f6, #22c55e); transition: width 0.3s; }
+.ps-wiz-btn { font-size: 0.85rem; font-weight: 700; padding: 0.5rem 1.1rem; border-radius: 0.7rem; border: 1px solid var(--paper-accent); background: var(--paper-accent); color: #fff; cursor: pointer; min-height: 42px; }
+.ps-wiz-btn.ps-prev { background: #fff; color: var(--paper-accent); }
+.ps-wiz-btn:hover { filter: brightness(1.05); }
+.ps-wiz-btn:disabled { opacity: 0.4; cursor: default; }
+.ps-wiz-btn:focus-visible { outline: 3px solid var(--paper-accent) !important; outline-offset: 2px; }
+.ps-showall { margin-top: 0.6rem; font-size: 0.8rem; font-weight: 700; background: transparent; border: none; color: var(--paper-accent); cursor: pointer; text-decoration: underline; padding: 0.3rem 0; min-height: 32px; }
+/* visibility: one step at a time unless "show all" */
+#paperCanvas:not(.ps-show-all) .ps-step { display: none; }
+#paperCanvas:not(.ps-show-all) .ps-step.ps-current { display: block; }
+#paperCanvas.ps-show-all .ps-wizard-row,
+#paperCanvas.ps-show-all .ps-wizard-bottom { display: none; }
+/* the wizard chrome never belongs in an export */
+.export-clean-pdf .ps-wizard-bar, #paperCanvas.paper-mode-preview .ps-wizard-bar { display: none !important; }
+/* CRITICAL: export / preview / print must show the WHOLE paper, never just the current
+   wizard step — otherwise a student exporting mid-wizard gets a one-section PDF. */
+.export-clean-pdf .ps-step,
+#paperCanvas.paper-mode-preview .ps-step { display: block !important; }
+@media print { #paperCanvas .ps-step { display: block !important; } }
+@media (prefers-reduced-motion: reduce) { .ps-progress-bar { transition: none; } }
+@media (max-width: 700px) { .ps-wiz-btn { min-height: 44px; flex: 1 1 auto; } }
+
 /* ---- canvas ---- */
 .paper-canvas {
   flex: 1 1 auto;

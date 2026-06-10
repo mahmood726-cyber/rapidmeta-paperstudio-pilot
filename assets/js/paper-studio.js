@@ -608,6 +608,7 @@
     var canvas = document.getElementById("paperCanvas");
     if (canvas) canvas.innerHTML = html;
     PS.updateProtocolLink();
+    PS.buildWizard();
   };
 
   // Show a clickable "Open protocol page" link only when the field holds a real http(s) URL.
@@ -1025,10 +1026,15 @@
       '<button type="button" class="nav-skip" data-action="skip-to-writing">Skip to writing →</button>' +
       '<ul role="list" class="nav-grouplist">' + groups + '</ul></details></nav>';
   };
-  // Jump to a section: scroll its box into view, move focus into it, mark it current.
+  // Jump to a section: in wizard mode switch to the step that holds it, then focus its box.
   PS.gotoSection = function (field) {
     var el = document.querySelector('#paperCanvas [data-field="' + field + '"]');
     if (!el) return;
+    var step = el.closest(".ps-step");
+    if (step && PS.state.ui && PS.state.ui.view === "wizard") {
+      var steps = Array.prototype.slice.call(document.querySelectorAll("#paperCanvas .ps-step"));
+      var idx = steps.indexOf(step); if (idx >= 0) applyWizard(idx, false);
+    }
     el.scrollIntoView({ behavior: "smooth", block: "center" });
     try { el.focus(); } catch (e) {}
     var panel = document.getElementById("paperNavPanel");
@@ -1036,6 +1042,85 @@
       if (b.dataset.navField === field) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
     });
   };
+
+  /* ---------------- one-section wizard (Feature C) ---------------- */
+  // After render() flattens the paper into #paperCanvas, group the children into steps cut
+  // at each H2/H3 (only Results has H3s, so it sub-splits there -> ~13 hybrid steps). Show
+  // one step at a time by default for first-time writers; "Show all" is a persisted toggle.
+  function isFirstTimer() { return Object.keys((PS.state && PS.state.studentText) || {}).length === 0; }
+  PS.buildWizard = function () {
+    var canvas = document.getElementById("paperCanvas");
+    if (!canvas) return;
+    // render() just reset innerHTML, so children are flat (no prior steps/bars to unwrap).
+    var nodes = Array.prototype.slice.call(canvas.childNodes);
+    var steps = [], cur = null;
+    nodes.forEach(function (node) {
+      var hdr = node.nodeType === 1 && (node.tagName === "H2" || node.tagName === "H3");
+      if (hdr || !cur) { cur = { title: hdr ? node.textContent.trim() : "Title & overview", nodes: [] }; steps.push(cur); }
+      cur.nodes.push(node);
+    });
+    if (!steps.length) return;
+    var ui = PS.state.ui = PS.state.ui || {};
+    if (ui.view == null) ui.view = isFirstTimer() ? "wizard" : "all";
+    steps.forEach(function (s, i) {
+      var wrap = document.createElement("div");
+      wrap.className = "ps-step"; wrap.setAttribute("role", "group");
+      wrap.dataset.step = i; wrap.setAttribute("aria-label", "Step " + (i + 1) + " of " + steps.length + ": " + s.title);
+      s.nodes.forEach(function (n) { wrap.appendChild(n); });   // relocates the node
+      canvas.appendChild(wrap);
+    });
+    PS._wizardTitles = steps.map(function (s) { return s.title; });
+    canvas.insertBefore(makeWizardBar(false), canvas.firstChild);   // top bar
+    canvas.appendChild(makeWizardBar(true));                        // bottom Back/Next
+    canvas.classList.toggle("ps-show-all", ui.view === "all");
+    applyWizard(Math.min(Math.max(0, ui.step || 0), steps.length - 1), false);
+  };
+  function makeWizardBar(bottom) {
+    var bar = document.createElement("div");
+    bar.className = "ps-wizard-bar no-clean-pdf" + (bottom ? " ps-wizard-bottom" : "");
+    bar.innerHTML =
+      '<div class="ps-wizard-row">' +
+      '<button type="button" class="ps-wiz-btn ps-prev" data-wiz="prev">← Back</button>' +
+      (bottom ? '' : '<div class="ps-wizard-mid"><div class="ps-step-label" aria-live="polite"></div>' +
+        '<div class="ps-progress-wrap" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="ps-progress-bar"></span></div></div>') +
+      '<button type="button" class="ps-wiz-btn ps-next" data-wiz="next">Next →</button></div>' +
+      (bottom ? '' : '<button type="button" class="ps-showall" data-wiz="toggle"></button>');
+    return bar;
+  }
+  // Show step i (never hard-locks Next; Back disabled only at step 0). focusHeading=true on
+  // Back/Next so keyboard + screen-reader users land on the new section heading.
+  function applyWizard(i, focusHeading) {
+    var canvas = document.getElementById("paperCanvas"); if (!canvas) return;
+    var steps = canvas.querySelectorAll(".ps-step"); if (!steps.length) return;
+    i = Math.min(Math.max(0, i), steps.length - 1);
+    PS.state.ui = PS.state.ui || {}; PS.state.ui.step = i;
+    steps.forEach(function (s, k) { s.classList.toggle("ps-current", k === i); });
+    // A Plotly plot rendered while its step was hidden has wrong dimensions; fix on reveal.
+    if (window.Plotly) { try { steps[i].querySelectorAll(".js-plotly-plot").forEach(function (gd) { window.Plotly.Plots.resize(gd); }); } catch (e) {} }
+    var total = steps.length, title = (PS._wizardTitles && PS._wizardTitles[i]) || "";
+    var pct = Math.round(((i + 1) / total) * 100);
+    canvas.querySelectorAll(".ps-step-label").forEach(function (l) { l.textContent = "Step " + (i + 1) + " of " + total + " — " + title; });
+    canvas.querySelectorAll(".ps-progress-bar").forEach(function (b) { b.style.width = pct + "%"; });
+    canvas.querySelectorAll(".ps-progress-wrap").forEach(function (w) { w.setAttribute("aria-valuenow", pct); });
+    canvas.querySelectorAll(".ps-prev").forEach(function (b) { b.disabled = (i === 0); });
+    canvas.querySelectorAll(".ps-next").forEach(function (b) { b.textContent = (i === total - 1) ? "Finish ✓" : "Next →"; });
+    var toggle = canvas.querySelector(".ps-showall");
+    if (toggle) toggle.textContent = (PS.state.ui.view === "all") ? "📖 Show one section at a time" : "📋 Show all sections at once";
+    if (focusHeading) {
+      var h = steps[i].querySelector("h1, h2, h3");
+      if (h) { h.setAttribute("tabindex", "-1"); try { h.focus(); } catch (e) {} h.scrollIntoView({ block: "start", behavior: "smooth" }); }
+    }
+    PS.save();
+  }
+  PS.wizardNext = function () { applyWizard((PS.state.ui && PS.state.ui.step || 0) + 1, true); };
+  PS.wizardPrev = function () { applyWizard((PS.state.ui && PS.state.ui.step || 0) - 1, true); };
+  PS.setWizardView = function (view) {
+    var canvas = document.getElementById("paperCanvas"); if (!canvas) return;
+    PS.state.ui = PS.state.ui || {}; PS.state.ui.view = view;
+    canvas.classList.toggle("ps-show-all", view === "all");
+    applyWizard(PS.state.ui.step || 0, false);
+  };
+  PS.toggleWizardView = function () { PS.setWizardView(PS.state.ui && PS.state.ui.view === "all" ? "wizard" : "all"); };
 
   /* ---------------- checklist / readiness ---------------- */
   PS.updateChecklist = function () {
@@ -1341,6 +1426,14 @@
       });
       // Delegated actions inside the (re-rendered) canvas — bind once on the stable parent.
       canvas.addEventListener("click", function (e) {
+        var wiz = e.target.closest("[data-wiz]");
+        if (wiz) {
+          e.preventDefault();
+          if (wiz.dataset.wiz === "next") PS.wizardNext();
+          else if (wiz.dataset.wiz === "prev") PS.wizardPrev();
+          else if (wiz.dataset.wiz === "toggle") PS.toggleWizardView();
+          return;
+        }
         var figBtn = e.target.closest("[data-figaction]");
         if (figBtn) { e.preventDefault(); PS.applyFigRange(figBtn.dataset.figid, figBtn.dataset.figaction === "reset"); return; }
         var act = e.target.closest("[data-action]");

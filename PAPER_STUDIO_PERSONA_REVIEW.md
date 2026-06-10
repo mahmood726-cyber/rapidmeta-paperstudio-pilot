@@ -7,7 +7,18 @@
 >   to a tappable drawer with 44px targets. Verifier 95/95 → 100/100. The feared ~70px mobile
 >   writing width did NOT reproduce — a column-stack at ≤1024px already existed (persona claim
 >   of "no collapse below 640px" was wrong; there is a 1024px rule).
-> - **Next:** C (one-section wizard) + the substantive-gate upgrade (P0, ship together), then A, then D.
+> - **Substantive gate upgrade (P0): DONE** (commit 15dd586). 4a anti-duplication (an unedited
+>    example starter, ≥90% Levenshtein-identical, is blocking) + 4b significance-vs-null (cannot
+>   claim "significant" when the CI crosses the no-effect line). 101 checks.
+> - **C — one-section wizard: DONE** (2026-06-10). Owner chose the **hybrid** step size: section
+>   steps with Results split into its parts (16 steps total). Post-render transform groups the
+>   canvas at each H2/H3; Back/Next move focus to the heading + aria-live announce; real
+>   progressbar; persisted "Show all" escape hatch; nav-jump switches steps; never hard-locks
+>   Next; figures resize on reveal; export/preview/print force the whole paper (no truncated PDF).
+>   Default ON for first-timers (empty draft). Verifier 101 → 107.
+> - **Next:** A (full-screen / focus mode), then D (story-based teaching, label-free).
+>   Deferred wizard enhancements from the review: the post-Results coherence checkpoint and the
+>   mandatory whole-paper read-through step (anti-fragmentation) — add on top of this stable base.
 
 
 Six target-user personas evaluated four proposed features before any build, per the

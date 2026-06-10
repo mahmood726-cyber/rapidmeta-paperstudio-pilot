@@ -33,6 +33,9 @@ try:
     d.find_element(By.ID, "btn-tab-paper").click(); time.sleep(2)
     check("Paper Studio tab opens", d.execute_script("return !document.getElementById('tab-paper').classList.contains('hidden');"))
     check("PaperStudio namespace loaded", d.execute_script("return typeof PaperStudio!=='undefined' && !!PaperStudio;"))
+    # The one-section wizard defaults ON for an empty draft; force "show all" so the rest of
+    # this suite sees every section. (Dedicated wizard tests switch back to wizard mode.)
+    d.execute_script("PaperStudio.setWizardView('all');")
     canvas = d.execute_script("return document.getElementById('paperCanvas').innerText||'';")
     check("Canvas rendered paper sections", all(s in canvas for s in ["Abstract","Introduction","Methods","Results","Discussion","References"]))
 
@@ -678,6 +681,62 @@ try:
         return document.activeElement===document.querySelector('#paperCanvas [data-field="studentText.title"]');
     """)
     check("B: 'Skip to writing' jumps focus into the first section", skip, str(skip))
+
+    # ======== Feature C: one-section wizard ========
+    wz = d.execute_script("""
+        PaperStudio.setWizardView('wizard');
+        var steps=document.querySelectorAll('#paperCanvas .ps-step');
+        return {total:steps.length,
+                current:Array.prototype.filter.call(steps,function(s){return s.classList.contains('ps-current');}).length,
+                shown:Array.prototype.filter.call(steps,function(s){return s.offsetParent!==null;}).length,
+                label:(document.querySelector('.ps-step-label')||{}).textContent||''};
+    """)
+    check("C: wizard shows exactly one section at a time (~13 hybrid steps)",
+          wz["total"] >= 10 and wz["current"] == 1 and wz["shown"] == 1 and "Step 1 of" in wz["label"], str(wz))
+    wznav = d.execute_script("""
+        PaperStudio.setWizardView('wizard'); PaperStudio.state.ui.step=0; PaperStudio.wizardNext();
+        var cur=document.querySelector('#paperCanvas .ps-step.ps-current');
+        var r={idx:cur?Number(cur.dataset.step):-1, focusInStep:cur?cur.contains(document.activeElement):false,
+               label:(document.querySelector('.ps-step-label')||{}).textContent||''};
+        PaperStudio.wizardPrev();
+        r.backIdx=Number(document.querySelector('#paperCanvas .ps-step.ps-current').dataset.step);
+        return r;
+    """)
+    check("C: Next/Back move the step and put focus on the new section heading (a11y)",
+          wznav["idx"] == 1 and wznav["focusInStep"] and wznav["backIdx"] == 0, str(wznav))
+    wzall = d.execute_script("""
+        PaperStudio.setWizardView('all');
+        var steps=document.querySelectorAll('#paperCanvas .ps-step');
+        return {allShown:Array.prototype.every.call(steps,function(s){return s.offsetParent!==null;}), view:PaperStudio.state.ui.view};
+    """)
+    check("C: 'Show all' reveals every section and persists the choice", wzall["allShown"] and wzall["view"] == "all", str(wzall))
+    wzjump = d.execute_script("""
+        PaperStudio.setWizardView('wizard'); PaperStudio.state.ui.step=0;
+        PaperStudio.gotoSection('studentText.heterogeneityInterpretation');
+        var cur=document.querySelector('#paperCanvas .ps-step.ps-current');
+        return {holds: cur?!!cur.querySelector('[data-field="studentText.heterogeneityInterpretation"]'):false};
+    """)
+    check("C: navigator jump switches the wizard to that field's step", wzjump["holds"], str(wzjump))
+    wzlock = d.execute_script("""
+        PaperStudio.setWizardView('wizard'); PaperStudio.state.ui.step=0;
+        var n0=document.querySelector('#paperCanvas .ps-step.ps-current').dataset.step;
+        PaperStudio.wizardNext();   // empty step must NOT hard-lock Next
+        var n1=document.querySelector('#paperCanvas .ps-step.ps-current').dataset.step;
+        var prevDisabledAt0 = (function(){PaperStudio.setWizardView('wizard');PaperStudio.state.ui.step=0;PaperStudio.wizardPrev();return document.querySelector('.ps-prev').disabled;})();
+        PaperStudio.setWizardView('all');
+        return {advanced: n1!==n0, prevDisabledAt0:prevDisabledAt0};
+    """)
+    check("C: Next never hard-locks; Back is disabled only at step 1", wzlock["advanced"] and wzlock["prevDisabledAt0"], str(wzlock))
+    wzexport = d.execute_script("""
+        PaperStudio.setWizardView('wizard'); PaperStudio.state.ui.step=0;
+        document.body.classList.add('export-clean-pdf');
+        var steps=document.querySelectorAll('#paperCanvas .ps-step');
+        var allVisible=Array.prototype.every.call(steps,function(s){return s.offsetParent!==null;});
+        document.body.classList.remove('export-clean-pdf');
+        PaperStudio.setWizardView('all');
+        return allVisible;
+    """)
+    check("C: exporting mid-wizard reveals the whole paper (no truncated PDF)", wzexport, str(wzexport))
 
     # ---- console errors ----
     logs = d.get_log("browser")
