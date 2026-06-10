@@ -27,14 +27,17 @@ Done earlier this session (**#1, #2, #4, #8**), each reproduced in a real headle
 first — which **overturned three of the plan's hypotheses below**:
 
 - **#1 full-width — DONE.** Confirmed: the *only* clamp was `.paper-canvas{max-width:920px}`
-  (no ancestor competed). Raised `--paper-max-width` to 1280px (canvas now fills ~1011px of a
-  1400px screen, vs 920); clean/print export re-caps to 920px (A4). `paper-studio.css:20,~182,~447`.
+  (no ancestor competed). A first try at `1280px` still left ~150px dead margin on a 1920 monitor,
+  so the screen value is now `--paper-max-width:none` — the canvas fills the whole track (1531px
+  at 1920). Clean/print export re-caps to 920px (A4). `paper-studio.css:~20,~190,~455`.
 - **#2 dropdowns "cut off" — DONE.** Root cause was **NOT** native `<select>`s or an
   `overflow:hidden` ancestor (plan guess wrong). The `position:fixed` toolbar `More`/`Advanced
   formats` menus hardcoded `top:54px`, assuming the toolbar sat at the viewport top — but the
   RapidMeta global header pushes the sticky toolbar to y≈230, so the menus floated to the
   screen's top-left corner, detached from their button. Fix: anchor each menu to its summary
   rect via JS on open + reposition on scroll/resize (`paper-studio.js` `wireToolbar`).
+  Follow-up: on short screens the tall Advanced-formats menu (11 items) overflowed and *felt*
+  unscrollable — added a visible scrollbar + `overscroll-behavior:contain` so it scrolls in place.
 - **#4 title not editable — DONE.** The plan's "save-on-input re-renders and wipes focus" is
   **false** (the input handler never re-renders). Real latent cause: an **empty inline
   `contenteditable` collapses to ~12px**, so clicks land on the non-editable `<h1>`/`<figcaption>`.

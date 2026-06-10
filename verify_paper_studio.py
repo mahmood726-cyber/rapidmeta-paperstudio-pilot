@@ -515,6 +515,14 @@ try:
     """)
     check("#2 'Advanced formats' menu anchors under its button (right-aligned)",
           abs(dlm["gap"]) <= 16 and dlm["rightDelta"] <= 16 and dlm["bodyTop"] > 60, str(dlm))
+    # tall menus must be internally scrollable with the wheel kept inside (overscroll-contain)
+    scr = d.execute_script("""
+        var b=document.querySelector('.download-menu-body'); var cs=getComputedStyle(b);
+        b.scrollTop=9999; var moved=b.scrollTop;  // 0 here (fits at 1400x1000) but proves it is a scroll container
+        return {overflowY:cs.overflowY, overscroll:(cs.overscrollBehaviorY||cs.overscrollBehavior||''), scrollableContainer: b.scrollHeight>=b.clientHeight};
+    """)
+    check("#2 Menu is a scroll container with wheel contained (no page-chaining)",
+          scr["overflowY"] == "auto" and "contain" in scr["overscroll"], str(scr))
     d.execute_script("document.querySelector('.download-menu').removeAttribute('open');")
 
     # ---- #4: an EMPTY inline editable keeps a clickable hit area (title fills its line) ----

@@ -1194,7 +1194,7 @@
         if (!m.d.open || window.innerWidth <= 640) { clearPos(m.b); return; }
         var r = m.d.querySelector("summary").getBoundingClientRect();
         m.b.style.top = Math.round(r.bottom + 4) + "px";
-        m.b.style.maxHeight = "calc(100vh - " + Math.round(r.bottom + 20) + "px)";
+        m.b.style.maxHeight = "calc(100vh - " + Math.round(r.bottom + 28) + "px)";
         if (m.side === "right") { m.b.style.left = "auto"; m.b.style.right = Math.max(8, Math.round(window.innerWidth - r.right)) + "px"; }
         else { m.b.style.right = "auto"; m.b.style.left = Math.max(8, Math.round(r.left)) + "px"; }
       }
