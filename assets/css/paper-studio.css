@@ -201,6 +201,9 @@
 }
 .use-example:hover { background: #dceafb; }
 .use-example[hidden] { display: none; }
+/* "Open protocol page" link — shown only when the protocol-link field holds a real URL. */
+.protocol-open { display: inline-block; margin: 0.1rem 0 0.4rem; font-size: 0.82rem; font-weight: 700; color: var(--paper-accent); text-decoration: underline; }
+.protocol-open[hidden] { display: none; }
 .word-target { font-size: 0.72rem; color: var(--paper-muted); font-style: italic; }
 .live-wc { font-style: normal; font-weight: 700; }
 .live-wc.wc-low { color: #b45309; }
@@ -423,6 +426,30 @@ figcaption { font-size: 0.95rem; color: var(--paper-muted); border-top: 1px soli
   padding: 0.6rem 1.1rem; border-radius: 0.7rem; font-weight: 700; font-size: 0.85rem; text-decoration: none;
 }
 #closeLearningDrawer { background: #334155; color: #e2e8f0; border: none; border-radius: 0.6rem; padding: 0.4rem 0.9rem; cursor: pointer; font-size: 0.8rem; }
+
+/* ---- worked-example modal (read-only exemplar) ---- */
+/* Mounted on <body>, OUTSIDE #tab-paper, so the --paper-* custom properties (scoped to
+   #tab-paper) do NOT resolve here — use explicit colours so text stays high-contrast
+   regardless of the surrounding dark theme. */
+.example-modal {
+  position: fixed; inset: 0; z-index: 80; background: rgba(15, 23, 42, 0.6);
+  display: flex; align-items: flex-start; justify-content: center; padding: 3vh 1rem; overflow-y: auto;
+}
+.example-modal[hidden] { display: none; }
+.example-modal-card {
+  background: #fff; color: #1f2933; max-width: 760px; width: 100%;
+  border-radius: 18px; box-shadow: 0 18px 50px rgba(15, 23, 42, 0.45); padding: 1.5rem 1.8rem 2rem;
+}
+.example-modal-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  position: sticky; top: 0; background: #fff; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb;
+}
+.example-modal-head strong { font-size: 1.05rem; color: #1f2933; }
+.example-modal-head button { font-size: 0.8rem; font-weight: 700; padding: 0.4rem 0.9rem; border-radius: 0.6rem; background: #334155; color: #fff; border: none; cursor: pointer; }
+.example-modal-head button:hover { background: #475569; }
+.example-modal-note { background: #eefaf2; border: 1px solid #bbf7d0; border-radius: 8px; padding: 0.5rem 0.75rem; margin: 0.8rem 0; font-size: 0.84rem; color: #14532d; }
+.example-modal-body h3 { font-size: 1rem; color: #2454a6; margin: 1.1rem 0 0.2rem; }
+.example-modal-body p { font-size: 0.92rem; line-height: 1.6; margin: 0.2rem 0; color: #1f2933; }
 
 /* ---- toast ---- */
 .paper-toast {

@@ -121,6 +121,14 @@
       // Certainty — read the rendered GRADE badge (machine-readable), not free text.
       if (!a.certainty) a.certainty = scrapeCertainty();
 
+      // Best-effort prefill of the registered-protocol link. Blank in the pilot; populated
+      // copies can expose RapidMeta.state.protocolUrl or a <meta name="protocol-url">.
+      if (!PS.state.studentText.protocolLink) {
+        var purl = (RM && RM.state && (RM.state.protocolUrl || (RM.state.protocol && RM.state.protocol.url))) || "";
+        if (!purl) { var mt = document.querySelector('meta[name="protocol-url"]'); if (mt) purl = mt.getAttribute("content") || ""; }
+        if (/^https?:\/\/\S+$/i.test(purl)) PS.state.studentText.protocolLink = purl;
+      }
+
       // HONESTY CHECK: did the analysis silently DROP included studies from pooling?
       // (e.g. trials included with an HR but no extracted event counts are dropped by the
       // event-based pool, so k < the number of included studies, with no warning.)
@@ -405,6 +413,8 @@
     html += box("studentText.abstractBackground", "Background", "[Condition] is important because...", "~2-3 sentences",
       "One or two sentences on why this health problem matters — who it affects and what can go wrong for these patients.",
       "This condition affects many people and can lead to serious harm over time. Current treatments help some patients, but important questions about benefit remain, which is why this question matters.");
+    html += example("Chronic kidney disease in adults with type 2 diabetes is common and progressive; many patients develop heart failure or die from cardiovascular causes despite standard care.",
+      "This disease is very common and serious.");
     html += box("studentText.abstractObjective", "Objective", "This short review aimed to assess whether...", "1 sentence",
       "State the question in one sentence: did the intervention help, for this outcome, in this population?",
       "This short review aimed to assess whether the intervention improves the main outcome compared with the comparator in this population.");
@@ -431,6 +441,8 @@
     html += box("studentText.introductionWhyReviewNeeded", "Why combining studies is useful here", "Combining studies is useful here because... Therefore, this short paper asks whether...", "~2-3 sentences",
       "Explain that combining trials gives a more precise answer than any single trial, then state your question.",
       "Combining the available studies is useful here because each single study on its own is too small to give a precise answer. Pooling them gives a clearer estimate, so this short paper asks whether the intervention improves the main outcome.");
+    html += example("No single trial was large enough to settle the question precisely, so pooling the major trials gives a more reliable estimate of whether the drug helps.",
+      "Combining studies is useful and important.");
 
     /* methods */
     html += '<h2>Methods</h2>';
@@ -441,6 +453,8 @@
       "We included [study design] of " + auto("pico.intervention", "[intervention]") + " versus " + auto("pico.comparator", "[comparator]") + " in " + auto("pico.population", "[population]") + " reporting " + auto("pico.primaryOutcome", "[primary outcome]") + ". We excluded...", "1-2 sentences",
       "State the ACTUAL study designs you included and your main inclusion/exclusion rules — do not leave the default if it is not what you did. The tool cannot know this for you.",
       "We included randomised controlled trials comparing the intervention with the comparator in this population and reporting the main outcome. We excluded studies that were not randomised or did not report the outcome of interest.") + '</p>';
+    html += example("We included randomised controlled trials of finerenone versus placebo in adults with CKD and type 2 diabetes that reported cardiovascular events; we excluded non-randomised studies and trials without that outcome.",
+      "We included all the relevant studies about the drug.");
     methodsProse().forEach(function (par) { html += '<p>' + (par.label ? '<strong>' + esc(par.label) + '.</strong> ' : '') + par.text + '</p>'; });
     html += box("studentText.methodsStudentLimitation", "One limitation of this rapid workflow", "One limitation of this rapid workflow is...", "1-2 sentences",
       "Name one shortcut a rapid review takes (e.g. fewer databases, faster screening) and say how it could affect the result.",
@@ -520,6 +534,8 @@
     html += box("studentText.discussionPrincipalFinding", "Main finding", "The main finding of this short review is...", "1-2 sentences",
       "Restate your main result in plain words — no statistics needed here.",
       "The main finding of this short review is that the intervention appears to affect the outcome in one direction, though the size of that effect should be read alongside how certain the evidence is.");
+    html += example("Across the pooled trials, finerenone was associated with fewer cardiovascular events than placebo — a modest but consistent benefit.",
+      "The drug works for heart problems.");
     html += box("studentText.discussionClinicalMeaning", "Clinical meaning", "This would matter clinically if... For a doctor or patient it would / might / would not change practice because...", "~2-3 sentences",
       "This matters only if the effect is real and big enough. Look at the estimate AND the certainty, then say whether it would change what a doctor or patient does.",
       "This would matter clinically only if the effect is both real and large enough to notice. Considering the estimate together with the certainty, it may or may not be enough to change what a doctor or patient decides.");
@@ -554,6 +570,8 @@
     html += box("studentText.reflectionLeastConfident", "Where I am least confident", "The part I am least confident about is...", "1-2 sentences",
       "Naming what you are unsure about is a sign of good scientific judgement — it is required, and it is one of the most valuable lines you will write.",
       "The part I am least confident about is whether the result applies to patients who were underrepresented in the trials, because there were few of them and the follow-up was relatively short.");
+    html += example("I am least sure whether the benefit holds in people with advanced kidney disease, because few such patients were included and follow-up was short.",
+      "I am not confident about some parts of this.");
     html += '</div>';
 
     /* author transparency (on-screen coaching, working PDF only) */
@@ -568,6 +586,10 @@
     html += '<p><strong>Data availability and provenance.</strong> The analysis was based on data the author extracted from the included trials. Sources searched: ' + esc(PS.state.search.databases || "(state databases)") + (PS.state.search.searchDate ? ', last searched ' + esc(PS.state.search.searchDate) : '') + '. Underlying trial data and the analysis project are available from the author on request.</p>';
     html += '<p><strong>Protocol and registration.</strong> ' + box("studentText.registration", "Protocol / registration", "This review was registered as... / This review was not registered.", "1 sentence", "State the registration (e.g. PROSPERO number) or say it was not registered.",
       "This review was not formally registered before it was carried out.") + '</p>';
+    html += '<p class="protocol-link-row"><strong>Protocol link.</strong> ' +
+      box("studentText.protocolLink", "Protocol link (optional)", "https://… link to your timestamped or registered protocol", null,
+        "If your protocol is published online (for example a timestamped GitHub Pages page, an OSF record, or a PROSPERO registration), paste its web address here so readers can open and verify it. RapidMeta fills this in automatically when it knows the published address.") +
+      '<a class="protocol-open no-clean-pdf" id="protocolOpenLink" target="_blank" rel="noopener noreferrer" hidden>↗ Open protocol page</a></p>';
     html += '<p><strong>Funding.</strong> ' + box("studentText.funding", "Funding", "This work received no specific funding. / Funded by...", "1 sentence", "Name any funding source, or state there was none.",
       "This work received no specific funding from any agency.") + '</p>';
     html += '<p><strong>Competing interests.</strong> ' + box("studentText.coi", "Competing interests", "The author declares no competing interests. / The author declares...", "1 sentence", "Declare any competing interests, or state there are none.",
@@ -585,6 +607,17 @@
 
     var canvas = document.getElementById("paperCanvas");
     if (canvas) canvas.innerHTML = html;
+    PS.updateProtocolLink();
+  };
+
+  // Show a clickable "Open protocol page" link only when the field holds a real http(s) URL.
+  PS.updateProtocolLink = function () {
+    var a = document.getElementById("protocolOpenLink");
+    if (!a) return;
+    var el = document.querySelector('#paperCanvas [data-field="studentText.protocolLink"]');
+    var url = (el ? (el.innerText || "") : (getNested(PS.state, "studentText.protocolLink") || "")).trim();
+    if (/^https?:\/\/\S+$/i.test(url)) { a.href = url; a.hidden = false; }
+    else { a.removeAttribute("href"); a.hidden = true; }
   };
 
   /* ---------------- references (deterministic; never LLM-generated) ---------------- */
@@ -1035,6 +1068,64 @@
     }
   });
 
+  /* ---------------- worked example (read-only exemplar) ---------------- */
+  // A complete, finished short evidence paper students can read end-to-end. Read-only:
+  // it never touches studentText (copying topic-specific prose into a different study
+  // would be an integrity risk — the per-box "Use this example" starters cover scaffolding).
+  var WORKED_EXAMPLE = [
+    ["Title", ["Finerenone for adults with chronic kidney disease and type 2 diabetes: a short systematic review and meta-analysis."]],
+    ["Abstract — Background", ["Chronic kidney disease in adults with type 2 diabetes is common and tends to worsen over time. Despite standard treatment, many patients still develop heart failure or die from cardiovascular causes, so better options are needed."]],
+    ["Abstract — Objective", ["This short review aimed to assess whether finerenone reduces cardiovascular events compared with placebo in this population."]],
+    ["Abstract — Methods", ["A rapid systematic review and random-effects meta-analysis combined three randomised trials (19,027 participants) for the composite cardiovascular outcome."]],
+    ["Abstract — Results", ["The pooled risk ratio was 0.86 (0.78 to 0.95, 95% CI), I² = 12%. The certainty of evidence (GRADE) was moderate."]],
+    ["Abstract — Conclusion", ["In adults with CKD and type 2 diabetes, finerenone probably reduces cardiovascular events by a modest amount; because certainty is moderate, the exact size of the benefit remains uncertain."]],
+    ["Introduction", [
+      "Chronic kidney disease in adults with type 2 diabetes is common and progressive. Even with standard care, many patients go on to develop heart failure or die from cardiovascular causes, and kidney function keeps declining.",
+      "Finerenone is a non-steroidal mineralocorticoid-receptor antagonist that may reduce cardiovascular and kidney harm. Before this review it was unclear how large and how reliable that benefit was across trials.",
+      "No single trial was large enough to settle the question precisely, so this short paper pools the major trials to ask whether finerenone reduces cardiovascular events."
+    ]],
+    ["Methods", ["We included randomised controlled trials of finerenone versus placebo in adults with CKD and type 2 diabetes that reported cardiovascular events. Treatment effects were summarised using the risk ratio in a random-effects meta-analysis; heterogeneity was quantified with I² and τ², risk of bias with RoB 2, and certainty with GRADE. As a rapid review the search was lighter than a full systematic review, so a relevant study could have been missed."]],
+    ["Results — primary outcome", ["The pooled risk ratio for the composite cardiovascular outcome was 0.86 (0.78 to 0.95, 95% CI) across three trials (19,027 participants). The confidence interval stayed below 1, so a benefit in this direction is statistically supported, and it was fairly narrow, indicating reasonable precision."]],
+    ["Results — heterogeneity", ["Statistical heterogeneity was low (I² = 12%, τ² ≈ 0.004), so the three trials gave broadly consistent results; with only three studies this agreement should be read cautiously rather than as proof."]],
+    ["Results — certainty", ["Certainty of evidence was rated Moderate, downgraded for imprecision because only three trials contributed; the conclusion is therefore worded cautiously rather than definitively."]],
+    ["Discussion", ["Across the pooled trials, finerenone was associated with fewer cardiovascular events than placebo — a modest but consistent benefit. Considering the estimate together with the moderate certainty, this could be worthwhile for high-risk patients, though the exact size is uncertain. A strength is that the review brings the main trials into a single estimate; the main limitation is that few trials contributed and the included patients may differ from everyday practice."]],
+    ["Conclusion", ["In adults with chronic kidney disease and type 2 diabetes, finerenone probably reduces cardiovascular events by a modest amount compared with placebo, although certainty is moderate and the exact size of the benefit remains uncertain. A larger trial focused on advanced kidney disease would help confirm whether the benefit holds in that group."]]
+  ];
+  var exampleOpener = null;
+  function exampleEsc(e) { if (e.key === "Escape") PS.closeWorkedExample(); }
+  PS._buildExampleModal = function () {
+    if (document.getElementById("workedExampleModal")) return;
+    var sections = WORKED_EXAMPLE.map(function (s) {
+      return '<h3>' + esc(s[0]) + '</h3>' + s[1].map(function (p) { return '<p>' + esc(p) + '</p>'; }).join("");
+    }).join("");
+    var wrap = document.createElement("div");
+    wrap.id = "workedExampleModal"; wrap.className = "example-modal"; wrap.hidden = true;
+    wrap.setAttribute("role", "dialog"); wrap.setAttribute("aria-modal", "true");
+    wrap.setAttribute("aria-label", "Worked example paper, read only");
+    wrap.innerHTML =
+      '<div class="example-modal-card" role="document">' +
+        '<div class="example-modal-head"><strong>📄 Worked example — read only</strong>' +
+        '<button id="closeWorkedExample" type="button">Close ✕</button></div>' +
+        '<p class="example-modal-note">This is a finished example to learn from. It does <strong>not</strong> change your paper — read it, then write your own in your own words.</p>' +
+        '<div class="example-modal-body">' + sections + '</div>' +
+      '</div>';
+    document.body.appendChild(wrap);
+    wrap.addEventListener("click", function (e) { if (e.target === wrap) PS.closeWorkedExample(); });
+    document.getElementById("closeWorkedExample").addEventListener("click", PS.closeWorkedExample);
+  };
+  PS.showWorkedExample = function () {
+    PS._buildExampleModal();
+    exampleOpener = document.activeElement;
+    var m = document.getElementById("workedExampleModal");
+    if (m) { m.hidden = false; document.addEventListener("keydown", exampleEsc); }
+    var c = document.getElementById("closeWorkedExample"); if (c) try { c.focus(); } catch (e) {}
+  };
+  PS.closeWorkedExample = function () {
+    var m = document.getElementById("workedExampleModal"); if (m) m.hidden = true;
+    document.removeEventListener("keydown", exampleEsc);
+    if (exampleOpener && exampleOpener.focus) try { exampleOpener.focus(); } catch (e) {}
+  };
+
   /* ---------------- boot / show ---------------- */
   var wired = false;
   // Wire the persistent toolbar + canvas listeners EXACTLY ONCE. The toolbar
@@ -1057,6 +1148,7 @@
       PS.render(); PS.embedFigures(); PS.toast("Start-here guide reopened.");
       var c = document.querySelector("#paperCanvas .onboard-card"); if (c) c.scrollIntoView({ behavior: "smooth", block: "start" });
     });
+    on("btnWorkedExample", function () { PS.showWorkedExample(); });
     on("btnRefreshFigures", function () { PS.embedFigures(true); PS.toast("Refreshing figures from the analysis…"); });
     on("btnDownloadWorkingPdf", function () { PS.downloadPaperPdf({ clean: false }); });
     on("btnDownloadCleanPdf", function () { PS.downloadPaperPdf({ clean: true }); });
@@ -1130,6 +1222,7 @@
         // Hide this field's "Use this example" button once it has content (show again if cleared).
         var ueb = document.querySelector('#paperCanvas .use-example[data-target="' + el.dataset.field + '"]');
         if (ueb) ueb.toggleAttribute("hidden", !!el.innerText.trim());
+        if (el.dataset.field === "studentText.protocolLink") PS.updateProtocolLink();
         clearTimeout(chkTimer);
         chkTimer = setTimeout(PS.updateChecklist, 600);
       });

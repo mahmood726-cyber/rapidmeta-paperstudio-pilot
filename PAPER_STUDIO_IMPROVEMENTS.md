@@ -1,9 +1,29 @@
 <!-- sentinel:skip-file - planning/spec doc -->
 # Paper Studio — UX improvement plan (user feedback 2026-06-09)
 
-## STATUS — 2026-06-10 (verified, 91/91 Selenium checks GREEN)
+## STATUS — 2026-06-10 (verified, 94/94 Selenium checks GREEN)
 
-Done this session (**#1, #2, #4, #8**), each reproduced in a real headless browser
+**7 of 8 fixes done** (#1, #2, #3, #4, #6, #7, #8). Only **#5 (wizard/stepper)** remains —
+deferred to its own session per the plan (largest, structural). The four hard bugs were
+each reproduced in a real headless browser first, which **overturned three of the plan's
+hypotheses below**; the build features (#3/#6/#7) were screenshot-verified.
+
+Added this session on top of #1/#2/#4/#8:
+- **#3 protocol link — DONE.** Added a `studentText.protocolLink` field in Disclosures that
+  best-effort-prefills from `RapidMeta.state.protocolUrl` / `<meta name=protocol-url>` (blank in
+  the pilot, populated copies can inject it) and shows a live clickable "↗ Open protocol page"
+  link only when the value is a real http(s) URL. Optional field — never blocks the gate.
+- **#6 more guidance — DONE.** Added "✓ Good / ✗ Too vague" example boxes to the required
+  sections that lacked one (abstract background, why-review-needed, eligibility, principal
+  finding, least-confident); 13 examples now render.
+- **#7 worked example — DONE.** "Show worked example" (in More ▾) opens a **read-only** modal
+  with a complete finerenone exemplar across all sections, ESC/focus-return, never touches
+  `studentText`. Deliberately read-only (not copy-to-draft): #8's per-box starters cover
+  scaffolding, and copying topic-specific prose into a different study is an integrity risk.
+  NOTE: the modal mounts on `<body>` outside `#tab-paper`, so the `--paper-*` CSS vars don't
+  resolve there — it uses explicit colours (a washed-out-text bug the screenshot caught).
+
+Done earlier this session (**#1, #2, #4, #8**), each reproduced in a real headless browser
 first — which **overturned three of the plan's hypotheses below**:
 
 - **#1 full-width — DONE.** Confirmed: the *only* clamp was `.paper-canvas{max-width:920px}`
@@ -27,8 +47,8 @@ first — which **overturned three of the plan's hypotheses below**:
   them verbatim would self-block the Clean PDF, so starters are token-free), hides once filled,
   is `.no-clean-pdf` (never exported), and is skipped by the word counter.
 
-Remaining (not started): **#3** GitHub protocol link, **#5** wizard/stepper, **#6** more
-guidance/examples, **#7** worked-example preview. See ordered list at the bottom.
+Remaining (not started): **#5** wizard/stepper only (largest; deferred to its own session,
+on top of the now-stable inputs). See ordered list at the bottom.
 
 ---
 

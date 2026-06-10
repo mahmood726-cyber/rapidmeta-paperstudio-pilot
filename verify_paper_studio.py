@@ -567,6 +567,46 @@ try:
     """)
     check("#8 'Use this example' buttons never reach the clean export (.no-clean-pdf)", exhid, str(exhid))
 
+    # ---- #6: more worked "Good vs Too-vague" examples on the required sections ----
+    nex = d.execute_script("return document.querySelectorAll('#paperCanvas .section-example').length;")
+    check("#6 Extra section examples render on required sections", nex >= 12, f"examples={nex}")
+
+    # ---- #3: registered-protocol link field reveals a clickable link, validates, never blocks ----
+    pl = d.execute_script("""
+        var box=document.querySelector('[data-field="studentText.protocolLink"]');
+        if(!box) return {err:'no field'};
+        var hiddenEmpty = (function(){var a=document.getElementById('protocolOpenLink');return a?a.hidden:null;})();
+        box.innerText='https://example.github.io/protocol-2026.html';
+        box.dispatchEvent(new InputEvent('input',{bubbles:true}));
+        var a=document.getElementById('protocolOpenLink');
+        var afterHref=a?a.getAttribute('href'):null, afterHidden=a?a.hidden:null;
+        box.innerText='not a url';
+        box.dispatchEvent(new InputEvent('input',{bubbles:true}));
+        var invalidHidden=document.getElementById('protocolOpenLink').hidden;
+        var blocks=PaperStudio.runReadinessCheck('clean').issues.some(function(i){return i.field==='studentText.protocolLink' && i.level==='error';});
+        box.innerText=''; box.dispatchEvent(new InputEvent('input',{bubbles:true}));
+        return {hiddenEmpty:hiddenEmpty, afterHref:afterHref, afterHidden:afterHidden, invalidHidden:invalidHidden, blocks:blocks};
+    """)
+    check("#3 Protocol link: valid URL shows a clickable link, invalid hides it, field never blocks",
+          pl.get("hiddenEmpty") and pl.get("afterHref") == "https://example.github.io/protocol-2026.html" and
+          pl.get("afterHidden") is False and pl.get("invalidHidden") and pl.get("blocks") is False, str(pl))
+
+    # ---- #7: read-only worked-example modal opens, has all sections, never edits the draft ----
+    we = d.execute_script("""
+        var before=JSON.stringify(PaperStudio.state.studentText);
+        document.getElementById('btnWorkedExample').click();
+        var m=document.getElementById('workedExampleModal');
+        var opened=!!(m && !m.hidden);
+        var hasBanner=m?/read.only/i.test(m.innerText):false;
+        var sections=m?m.querySelectorAll('.example-modal-body h3').length:0;
+        PaperStudio.closeWorkedExample();
+        var closed=m?m.hidden:false;
+        var after=JSON.stringify(PaperStudio.state.studentText);
+        return {opened:opened, hasBanner:hasBanner, sections:sections, closed:closed, unchanged: before===after};
+    """)
+    check("#7 Worked-example modal opens read-only with all sections, closes, never touches the draft",
+          we.get("opened") and we.get("hasBanner") and we.get("sections") >= 10 and we.get("closed") and we.get("unchanged"), str(we))
+
     # ---- console errors ----
     logs = d.get_log("browser")
     def noise(m):
