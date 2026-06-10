@@ -481,6 +481,92 @@ try:
     check("Story cards hidden in clean PDF + by tips toggle (no-clean-pdf class)",
           d.execute_script("return document.querySelectorAll('#paperCanvas .story-card.no-clean-pdf').length === document.querySelectorAll('#paperCanvas .story-card').length;"))
 
+    # ======== UX fixes (2026-06-10): #1 width, #2 menu anchor, #4 hit-area, #8 use-example ========
+
+    # ---- #1: canvas uses more screen width on desktop; clean export re-caps to A4 ----
+    w1 = d.execute_script("""
+        var c=document.querySelector('.paper-canvas');
+        var screenW=c.getBoundingClientRect().width;
+        document.body.classList.add('export-clean-pdf');
+        var capW=getComputedStyle(c).maxWidth;
+        document.body.classList.remove('export-clean-pdf');
+        return {screenW:Math.round(screenW), capW:capW};
+    """)
+    check("#1 Canvas fills more of the screen (was 920px); clean export re-caps to 920px",
+          w1["screenW"] > 1000 and w1["capW"] == "920px", str(w1))
+
+    # ---- #2: the position:fixed toolbar menus open UNDER their button, not the top-left corner ----
+    d.execute_script("document.querySelector('.toolbar-more').setAttribute('open','');")
+    time.sleep(0.2)
+    more = d.execute_script("""
+        var dd=document.querySelector('.toolbar-more'), b=document.querySelector('.toolbar-more-body');
+        var s=dd.querySelector('summary').getBoundingClientRect(), br=b.getBoundingClientRect();
+        return {gap: Math.round(br.top - s.bottom), leftDelta: Math.round(Math.abs(br.left - s.left)), bodyTop: Math.round(br.top)};
+    """)
+    check("#2 'More' menu anchors directly under its button (not floated to the corner)",
+          abs(more["gap"]) <= 16 and more["leftDelta"] <= 16 and more["bodyTop"] > 60, str(more))
+    d.execute_script("document.querySelector('.toolbar-more').removeAttribute('open');")
+    d.execute_script("document.querySelector('.download-menu').setAttribute('open','');")
+    time.sleep(0.2)
+    dlm = d.execute_script("""
+        var dd=document.querySelector('.download-menu'), b=document.querySelector('.download-menu-body');
+        var s=dd.querySelector('summary').getBoundingClientRect(), br=b.getBoundingClientRect();
+        return {gap: Math.round(br.top - s.bottom), rightDelta: Math.round(Math.abs(br.right - s.right)), bodyTop: Math.round(br.top)};
+    """)
+    check("#2 'Advanced formats' menu anchors under its button (right-aligned)",
+          abs(dlm["gap"]) <= 16 and dlm["rightDelta"] <= 16 and dlm["bodyTop"] > 60, str(dlm))
+    d.execute_script("document.querySelector('.download-menu').removeAttribute('open');")
+
+    # ---- #4: an EMPTY inline editable keeps a clickable hit area (title fills its line) ----
+    geo = d.execute_script("""
+        var t=document.querySelector('#paperCanvas h1 .student-editable[data-field="studentText.title"]');
+        if(!t) return {err:'no title'};
+        t.textContent='';                       // force the empty state
+        var cs=getComputedStyle(t), r=t.getBoundingClientRect(), h1=t.closest('h1').getBoundingClientRect();
+        var cap=document.querySelector('#paperCanvas figcaption .student-editable');
+        var capDisp = cap ? getComputedStyle(cap).display : '';
+        return {display:cs.display, fillsLine: r.width > h1.width*0.6, capDisplay:capDisp};
+    """)
+    check("#4 Empty title is a full-width clickable block; captions keep a min hit area",
+          geo.get("display") == "block" and geo.get("fillsLine") and geo.get("capDisplay") in ("inline-block", "block"), str(geo))
+
+    # ---- #8: 'Use this example' buttons fill the box, hide once filled, are gate-safe + export-clean ----
+    cnt = d.execute_script("return document.querySelectorAll('#paperCanvas .use-example').length;")
+    check("#8 'Use this example' buttons render for the writing boxes", cnt >= 15, f"count={cnt}")
+    ue = d.execute_script("""
+        var btn=document.querySelector('.use-example[data-target="studentText.coverFinding"]');
+        if(!btn) return {err:'no btn'};
+        var before=btn.hasAttribute('hidden');
+        btn.click();
+        var box=document.querySelector('[data-field="studentText.coverFinding"]');
+        return {hiddenBefore:before, hiddenAfter:btn.hasAttribute('hidden'),
+                boxText:box.innerText.trim(), state:((PaperStudio.state.studentText||{}).coverFinding||'').trim(),
+                starter:(btn.dataset.starter||'').trim()};
+    """)
+    check("#8 Clicking 'Use this example' fills the box, saves to state, and hides the button",
+          (not ue.get("hiddenBefore")) and ue.get("hiddenAfter") and ue.get("boxText") and
+          ue.get("boxText") == ue.get("state") and ue.get("boxText") == ue.get("starter"), str(ue)[:140])
+    unsafe = d.execute_script("""
+        var bad=/\\[(population|intervention|comparator|primary outcome|condition)\\]|_{3,}|\\bTBC\\b|\\bTODO\\b|lorem/i;
+        var out=[];
+        document.querySelectorAll('.use-example').forEach(function(b){ if(bad.test(b.dataset.starter||'')) out.push(b.dataset.target); });
+        return out;
+    """)
+    check("#8 Every example starter is gate-safe (no blocking placeholder tokens)", len(unsafe) == 0, str(unsafe))
+    nofloor = d.execute_script("""
+        var r=PaperStudio.runReadinessCheck('clean');
+        return r.issues.filter(function(i){return i.field==='studentText.coverFinding' && i.level==='error';}).length;
+    """)
+    check("#8 An accepted example satisfies the field word-floor (does not self-block)", nofloor == 0, f"coverFinding errors={nofloor}")
+    exhid = d.execute_script("""
+        document.body.classList.add('export-clean-pdf');
+        var b=document.querySelector('#paperCanvas .use-example:not([hidden])');
+        var hidden=b?(b.offsetParent===null):true;
+        document.body.classList.remove('export-clean-pdf');
+        return hidden;
+    """)
+    check("#8 'Use this example' buttons never reach the clean export (.no-clean-pdf)", exhid, str(exhid))
+
     # ---- console errors ----
     logs = d.get_log("browser")
     def noise(m):
