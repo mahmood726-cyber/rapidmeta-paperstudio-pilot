@@ -916,7 +916,11 @@
       : PS.cloneVisual("#prismaFlowContainer", "#prismaPaperSlot", "prisma", 760, 520);
     // Forest + funnel: render OUR OWN legible plots (with prediction interval +
     // x-range) from the computed results, instead of cloning the dark host images.
-    var res = (window.RapidMeta && RapidMeta.state) ? RapidMeta.state.results : null;
+    // The host nulls state.results when you leave the Analysis tab, so cache the last good
+    // one — keeps the paper's figures stable regardless of the host's scoping lifecycle.
+    var liveRes = (window.RapidMeta && RapidMeta.state) ? RapidMeta.state.results : null;
+    if (liveRes && liveRes.plotData) PS._lastResults = liveRes;
+    var res = (liveRes && liveRes.plotData) ? liveRes : (PS._lastResults || liveRes);
     var primaryLabel = (PS.state.pico && PS.state.pico.primaryOutcome) || "primary outcome";
     var forestOk = PS.renderOwnFig("forest", "forestPlotPaperSlot", res, primaryLabel);
     if (!forestOk) ensurePlaceholder("#forestPlotPaperSlot", "forestPlot", "The forest plot appears here once your analysis has results. Open the Analysis Suite, then click “Refresh figures”.");
@@ -934,14 +938,37 @@
     return !!res && (nonEmpty("#prisma-flow-container") || nonEmpty("#prismaFlowContainer"));
   }
 
+  // Make the host analysis computable WITHOUT the manual Analysis-tab visit / extraction tick:
+  // the host's run() scopes to state.selectedOutcome ?? 'default', and 'default' usually has no
+  // event counts, so results stay null. Select an outcome that actually has data so all the
+  // plots (forest/funnel/GRADE) render the moment Paper Studio opens.
+  PS.ensureAnalysisReady = function () {
+    try {
+      var RM = window.RapidMeta;
+      if (!RM || !RM.state) return;
+      var scope = RM.getAnalysisScopeDetails ? RM.getAnalysisScopeDetails() : null;
+      var trials = (scope && scope.eligible && scope.eligible.length) ? scope.eligible : (RM.state.trials || []);
+      var outcomesOf = function (t) { return (t && t.data && t.data.allOutcomes) || []; };
+      var hasData = function (k) { return k && trials.some(function (t) { return outcomesOf(t).some(function (o) { return o.shortLabel === k; }); }); };
+      if (!hasData(RM.state.selectedOutcome)) {
+        var key = null;
+        trials.some(function (t) { var os = outcomesOf(t); if (os.length) { key = os[0].shortLabel; return true; } return false; });
+        if (key) RM.state.selectedOutcome = key;
+      }
+    } catch (e) {}
+  };
+
   // force=true re-runs the host pipeline even if results exist (Refresh button).
   PS.embedFigures = function (force) {
+    PS.ensureAnalysisReady();
     var haveResults = !!(window.RapidMeta && RapidMeta.state && RapidMeta.state.results);
-    // Only re-run heavy host computation when results are missing, or explicitly forced.
+    // Compute the analysis + figures up front (missing results, or explicitly forced).
     if (force || !haveResults) {
+      PS.__selfRun = true;   // suppress the auto-update hook for our own pipeline runs
       try { if (window.AnalysisEngine && AnalysisEngine.run) AnalysisEngine.run(); } catch (e) {}
       try { if (window.ReportEngine && ReportEngine.generate) ReportEngine.generate(); } catch (e) {}
       try { if (window.PrismaEngine && PrismaEngine.renderToElement) PrismaEngine.renderToElement("prisma-flow-container"); } catch (e) {}
+      PS.__selfRun = false;
     }
     var attempt = 0, MAX = 4;
     var captionsBefore = countRequiredCaptions();
@@ -961,6 +988,35 @@
     var n = 0; ["prisma", "forestPlot", "gradeTable"].forEach(function (k) { if (PS.state.figures[k] && PS.state.figures[k].available) n++; });
     return n;
   }
+  // Auto-update: re-clone the figures from the host's (re-computed) results WITHOUT re-running
+  // the engines — used when the host analysis is re-run externally (the "living" data changes).
+  PS.__softRefresh = function () {
+    try {
+      var ae = document.activeElement;
+      var typing = ae && ae.closest && ae.closest('#paperCanvas [contenteditable="true"]');
+      PS.loadRapidMetaData();          // refresh the auto-filled numbers from the new analysis
+      if (!typing) PS.render();         // re-render the body (skipped mid-typing to keep focus)
+      clonePass();                      // re-render the figures
+      PS.updateChecklist();
+      PS.toast("Updated from your latest analysis.");
+    } catch (e) {}
+  };
+  // Wrap the host's AnalysisEngine.run ONCE so an external re-run refreshes Paper Studio while
+  // it is open. Our own runs set PS.__selfRun, so this never recurses.
+  PS.hookLiveUpdate = function () {
+    var AE = window.AnalysisEngine;
+    if (!AE || typeof AE.run !== "function" || AE.__psLiveHooked) return;
+    AE.__psLiveHooked = true;
+    var orig = AE.run.bind(AE);
+    AE.run = function () {
+      var out = orig.apply(this, arguments);
+      if (!PS.__selfRun && document.body && document.body.dataset.paperMode) {
+        clearTimeout(PS.__liveTimer);
+        PS.__liveTimer = setTimeout(PS.__softRefresh, 200);
+      }
+      return out;
+    };
+  };
 
   function ensurePlaceholder(sel, figKey, msg) {
     var el = document.querySelector(sel);
@@ -1509,6 +1565,15 @@
   // restore, or keyboard nav — and safe if those fire together.
   PS.onShow = function () {
     if (!booted) { PS.restore(); booted = true; }
+    PS.hookLiveUpdate();
+    // Compute the analysis BEFORE autofill so the numbers (effect, CI, I², GRADE) populate too,
+    // not just the plots — without needing the Analysis tab visit or the extraction tick.
+    PS.ensureAnalysisReady();
+    if (!(window.RapidMeta && RapidMeta.state && RapidMeta.state.results)) {
+      PS.__selfRun = true;
+      try { if (window.AnalysisEngine && AnalysisEngine.run) AnalysisEngine.run(); } catch (e) {}
+      PS.__selfRun = false;
+    }
     PS.loadRapidMetaData();
     seedDemoOutcomes();     // demo only: illustrative secondary outcomes
     PS.render();            // re-render canvas content
@@ -1518,6 +1583,7 @@
     var tipsOff = false; try { tipsOff = localStorage.getItem("rapidmeta.paperTips") === "off"; } catch (e) {}
     document.body.classList.toggle("tips-hidden", tipsOff);
     var tb = document.getElementById("btnToggleTips"); if (tb) tb.textContent = tipsOff ? "Show examples & notes" : "Hide examples & notes";
+    PS.hookLiveUpdate();   // refresh figures if the host analysis is re-run while open
     PS.embedFigures();
     PS.updateChecklist();
     PS.updateWordCounts();

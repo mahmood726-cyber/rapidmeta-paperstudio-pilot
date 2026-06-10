@@ -44,6 +44,19 @@ try:
     check("Autofill intervention = Finerenone", "finerenone" in (pico.get("intervention") or "").lower(), pico.get("intervention"))
     check("Clinical question renders PICO", "finerenone" in canvas.lower() and "placebo" in canvas.lower())
 
+    # Figures + numbers must appear on a FRESH open — no Analysis-tab visit, no extraction tick.
+    time.sleep(2)
+    fo = d.execute_script("""
+        function box(id){var b=document.getElementById(id);return !!(b&&(b.layout&&b.data));}
+        var a=PaperStudio.state.analysis;
+        return {effect:a.effectEstimate, k:a.kStudies,
+                forest:box('forestPlotPaperSlot-box'),
+                prisma:((document.getElementById('prismaPaperSlot')||{}).innerHTML||'').length>500,
+                grade:((document.getElementById('gradePaperSlot')||{}).innerHTML||'').length>300};
+    """)
+    check("Figures + numbers auto-render on fresh open (no extraction tick / Analysis-tab visit)",
+          bool(fo["effect"]) and fo["forest"] and fo["prisma"], str(fo))
+
     check("Evidence chips populated", "Intervention" in d.execute_script("return document.getElementById('evidenceChipsPanel').innerText||'';"))
     rd = d.execute_script("return document.getElementById('paperChecklistPanel').innerText||'';")
     check("Readiness panel shows score", "%" in rd and "readiness" in rd.lower())
