@@ -60,6 +60,16 @@
 .paper-toolbar button.primary { background: var(--paper-accent); border-color: var(--paper-accent); color: #fff; }
 .paper-toolbar button.primary:hover { background: #1d4486; }
 .paper-toolbar .ps-save-status { font-size: 0.72rem; color: #94a3b8; margin-left: 0.4rem; }
+.paper-toolbar button#btnFocusMode[aria-pressed="true"] { background: var(--paper-accent); border-color: var(--paper-accent); color: #fff; }
+
+/* ---- focus mode (Feature A): hide the host chrome for a full-screen writing space ----
+   display:none reclaims the space AND removes the bars from the tab order + a11y tree
+   (what the review wanted inert/aria-hidden for), and works without the Fullscreen API. */
+body.ps-focus-mode #rapidmeta-integrity-badge,
+body.ps-focus-mode > header,
+body.ps-focus-mode nav[role="tablist"] { display: none !important; }
+.ps-provenance { display: none; }
+body.ps-focus-mode .ps-provenance { display: inline; font-size: 0.72rem; color: #94a3b8; }
 
 /* "More" overflow + download menus */
 .toolbar-more, .download-menu { position: relative; }

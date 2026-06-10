@@ -738,6 +738,32 @@ try:
     """)
     check("C: exporting mid-wizard reveals the whole paper (no truncated PDF)", wzexport, str(wzexport))
 
+    # ======== Feature A: focus mode (CSS full-screen) ========
+    fa = d.execute_script("""
+        var btn=document.getElementById('btnFocusMode');
+        btn.click();
+        var hidden=function(sel){var e=document.querySelector(sel);return e?e.offsetParent===null:true;};
+        return {on: document.body.classList.contains('ps-focus-mode'),
+                pressed: btn.getAttribute('aria-pressed')==='true',
+                bannerHidden: hidden('#rapidmeta-integrity-badge'),
+                headerHidden: hidden('body > header'),
+                tabsHidden: hidden('nav[role=\"tablist\"]'),
+                provenanceShown: (function(){var p=document.querySelector('.ps-provenance');return p?p.offsetParent!==null:false;})(),
+                exitLabel: /Exit focus/.test(btn.textContent)};
+    """)
+    check("A: focus mode hides the host chrome (banner/header/tabs), shows provenance, sets aria-pressed",
+          fa["on"] and fa["pressed"] and fa["bannerHidden"] and fa["headerHidden"] and fa["tabsHidden"] and fa["provenanceShown"] and fa["exitLabel"], str(fa))
+    fesc = d.execute_script("""
+        document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+        var btn=document.getElementById('btnFocusMode');
+        return {off: !document.body.classList.contains('ps-focus-mode'),
+                tabsBack: document.querySelector('nav[role=\"tablist\"]').offsetParent!==null,
+                focusReturned: document.activeElement===btn,
+                label: btn.textContent};
+    """)
+    check("A: Esc exits focus mode, restores chrome, returns focus to the toggle",
+          fesc["off"] and fesc["tabsBack"] and fesc["focusReturned"] and "Focus mode" in fesc["label"], str(fesc))
+
     # ---- console errors ----
     logs = d.get_log("browser")
     def noise(m):

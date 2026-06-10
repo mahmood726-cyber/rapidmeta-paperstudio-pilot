@@ -954,6 +954,17 @@
     document.body.dataset.paperMode = mode;
   };
 
+  /* ---------------- focus mode (Feature A) ---------------- */
+  // CSS full-screen (NOT the Fullscreen API): hides the host chrome so Paper Studio fills the
+  // screen like a word processor. Esc exits; the toggle stays visible; focus returns on exit.
+  PS.setFocusMode = function (on) {
+    document.body.classList.toggle("ps-focus-mode", on);
+    var btn = document.getElementById("btnFocusMode");
+    if (btn) { btn.setAttribute("aria-pressed", on ? "true" : "false"); btn.textContent = on ? "⛶ Exit focus" : "⛶ Focus mode"; }
+    PS.toast(on ? "Focus mode on — press Esc or “Exit focus” to leave." : "Focus mode off.");
+  };
+  PS.toggleFocusMode = function () { PS.setFocusMode(!document.body.classList.contains("ps-focus-mode")); };
+
   /* ---------------- section navigator (Feature B) ---------------- */
   // The 21 fillable sections, grouped into 7 friendly IMRaD headings. This is the single
   // ordered model the left navigator uses now and the one-section wizard (Feature C) will
@@ -1320,6 +1331,7 @@
       PS.render(); PS.embedFigures(); PS.toast("Start-here guide reopened.");
       var c = document.querySelector("#paperCanvas .onboard-card"); if (c) c.scrollIntoView({ behavior: "smooth", block: "start" });
     });
+    on("btnFocusMode", function () { PS.toggleFocusMode(); });
     on("btnWorkedExample", function () { PS.showWorkedExample(); });
     on("btnRefreshFigures", function () { PS.embedFigures(true); PS.toast("Refreshing figures from the analysis…"); });
     on("btnDownloadWorkingPdf", function () { PS.downloadPaperPdf({ clean: false }); });
@@ -1345,6 +1357,13 @@
     on("btnClearAll", PS.clearAll);
     // Tutor-copy button lives in the re-rendered sidebar → delegate on document.
     document.addEventListener("click", function (e) { if (e.target.closest("#btnTutorCopy")) PS.downloadPaperPdf({ clean: false }); });
+    // Esc exits focus mode and returns focus to the toggle (a11y: never trap the user).
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && document.body.classList.contains("ps-focus-mode")) {
+        PS.setFocusMode(false);
+        var fb = document.getElementById("btnFocusMode"); if (fb) try { fb.focus(); } catch (ex) {}
+      }
+    });
     on("btnDownloadJson", PS.downloadJson);
     var up = document.getElementById("paperJsonInput");
     on("btnUploadJson", function () { if (up) up.click(); });
