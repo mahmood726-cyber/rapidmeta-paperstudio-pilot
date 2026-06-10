@@ -953,6 +953,90 @@
     document.body.dataset.paperMode = mode;
   };
 
+  /* ---------------- section navigator (Feature B) ---------------- */
+  // The 21 fillable sections, grouped into 7 friendly IMRaD headings. This is the single
+  // ordered model the left navigator uses now and the one-section wizard (Feature C) will
+  // reuse, so a nav click and a wizard step address the same sections.
+  PS.SECTION_NAV = [
+    { group: "Title & Abstract", items: [
+      { f: "studentText.title", label: "Title" },
+      { f: "studentText.coverFinding", label: "Main finding (cover)" },
+      { f: "studentText.abstractBackground", label: "Abstract: background" },
+      { f: "studentText.abstractConclusion", label: "Abstract: conclusion" } ] },
+    { group: "Introduction", items: [
+      { f: "studentText.introductionClinicalProblem", label: "Why the condition matters" },
+      { f: "studentText.introductionWhyReviewNeeded", label: "Why combine studies" } ] },
+    { group: "Methods", items: [
+      { f: "studentText.methodsEligibility", label: "Methods: who you included" } ] },
+    { group: "Results", items: [
+      { f: "figures.prisma.caption", label: "Study-selection (PRISMA) caption" },
+      { f: "figures.forestPlot.caption", label: "Forest plot caption" },
+      { f: "studentText.forestInterpretation", label: "What the forest plot means" },
+      { f: "figures.gradeTable.caption", label: "GRADE table caption" },
+      { f: "studentText.heterogeneityInterpretation", label: "What the heterogeneity means" },
+      { f: "studentText.certaintyInterpretation", label: "What the certainty means" } ] },
+    { group: "Discussion", items: [
+      { f: "studentText.discussionPrincipalFinding", label: "Discussion: main finding" },
+      { f: "studentText.discussionLimitations", label: "Main limitation" },
+      { f: "studentText.discussionConclusion", label: "Balanced conclusion" } ] },
+    { group: "Reflection", items: [
+      { f: "studentText.reflectionLeastConfident", label: "Where you are least sure" } ] },
+    { group: "Disclosures & References", items: [
+      { f: "studentText.registration", label: "Protocol / registration" },
+      { f: "studentText.funding", label: "Funding" },
+      { f: "studentText.coi", label: "Competing interests" },
+      { f: "studentText.references", label: "References" } ] }
+  ];
+  // "Done" = meets the SAME word floor the readiness gate enforces (text+glyph, not colour).
+  // NOTE: this will be upgraded to the substantive gate (Phase 2b) so "done" means understood,
+  // not merely "filled".
+  function navFieldDone(f) {
+    var v = (PS.getField ? PS.getField(f) : "") || "";
+    var n = v.trim() ? v.trim().split(/\s+/).filter(Boolean).length : 0;
+    var floor = (PS.floorFor ? PS.floorFor(f) : 0) || 1;
+    return n >= floor;
+  }
+  PS.buildSectionNav = function () {
+    var panel = document.getElementById("paperNavPanel");
+    if (!panel) return;
+    var total = 0, done = 0, idx = 0;
+    var groups = PS.SECTION_NAV.map(function (g) {
+      var items = g.items.map(function (it) {
+        total++;
+        var ok = navFieldDone(it.f); if (ok) done++;
+        var first = idx === 0; idx++;
+        var state = ok ? "complete" : "to write";
+        return '<li role="none"><button type="button" class="nav-item' + (ok ? " nav-done" : "") + '"' +
+          ' data-nav-field="' + escAttr(it.f) + '" tabindex="' + (first ? "0" : "-1") + '"' +
+          ' aria-label="' + escAttr(it.label + " — " + state) + '">' +
+          '<span class="nav-glyph" aria-hidden="true">' + (ok ? "✓" : "○") + '</span>' +
+          '<span class="nav-label">' + esc(it.label) + '</span></button></li>';
+      }).join("");
+      return '<li class="nav-group"><div class="nav-group-title">' + esc(g.group) + '</div><ul role="list">' + items + '</ul></li>';
+    }).join("");
+    // Default open on desktop, collapsed on phones (a 21-item list on top of a small screen
+    // is itself a wall); preserve the user's open/closed choice across refreshes.
+    var existing = panel.querySelector(".section-nav-wrap");
+    var openAttr = (existing ? existing.open : window.innerWidth > 700) ? " open" : "";
+    panel.innerHTML =
+      '<nav aria-label="Paper sections" class="section-nav">' +
+      '<details' + openAttr + ' class="section-nav-wrap"><summary><span class="nav-h">Sections</span> ' +
+      '<span class="nav-progress">' + done + ' of ' + total + ' done</span></summary>' +
+      '<button type="button" class="nav-skip" data-action="skip-to-writing">Skip to writing →</button>' +
+      '<ul role="list" class="nav-grouplist">' + groups + '</ul></details></nav>';
+  };
+  // Jump to a section: scroll its box into view, move focus into it, mark it current.
+  PS.gotoSection = function (field) {
+    var el = document.querySelector('#paperCanvas [data-field="' + field + '"]');
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    try { el.focus(); } catch (e) {}
+    var panel = document.getElementById("paperNavPanel");
+    if (panel) panel.querySelectorAll(".nav-item").forEach(function (b) {
+      if (b.dataset.navField === field) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+    });
+  };
+
   /* ---------------- checklist / readiness ---------------- */
   PS.updateChecklist = function () {
     var panel = document.getElementById("paperChecklistPanel");
@@ -986,6 +1070,9 @@
       if (c.blockingCount === 0) { dlBtn.textContent = "⬇ Download my paper (PDF)"; dlBtn.classList.remove("locked"); dlBtn.setAttribute("aria-disabled", "false"); }
       else { dlBtn.textContent = "🔒 Download my paper (" + c.blockingCount + " to finish)"; dlBtn.classList.add("locked"); dlBtn.setAttribute("aria-disabled", "true"); }
     }
+    // Refresh the left section navigator's done-states/progress (unless focus is inside it).
+    var np = document.getElementById("paperNavPanel");
+    if (!(np && np.contains(document.activeElement))) PS.buildSectionNav();
   };
 
   PS.showReadinessModal = function (check) {
@@ -1210,6 +1297,27 @@
       if (scroller) scroller.addEventListener("scroll", repositionOpen, { passive: true });
       window.addEventListener("resize", repositionOpen);
     })();
+
+    // ---- left section navigator: click + roving-tabindex keyboard nav (Feature B) ----
+    var navPanel = document.getElementById("paperNavPanel");
+    if (navPanel) {
+      navPanel.addEventListener("click", function (e) {
+        if (e.target.closest('[data-action="skip-to-writing"]')) { e.preventDefault(); PS.gotoSection(PS.SECTION_NAV[0].items[0].f); return; }
+        var item = e.target.closest(".nav-item");
+        if (item) { e.preventDefault(); PS.gotoSection(item.dataset.navField); }
+      });
+      // Arrow / Home / End move focus among items; only one item is in the tab order.
+      navPanel.addEventListener("keydown", function (e) {
+        var item = e.target.closest(".nav-item"); if (!item) return;
+        var items = Array.prototype.slice.call(navPanel.querySelectorAll(".nav-item"));
+        var i = items.indexOf(item), n = null;
+        if (e.key === "ArrowDown") n = items[Math.min(items.length - 1, i + 1)];
+        else if (e.key === "ArrowUp") n = items[Math.max(0, i - 1)];
+        else if (e.key === "Home") n = items[0];
+        else if (e.key === "End") n = items[items.length - 1];
+        if (n) { e.preventDefault(); items.forEach(function (b) { b.tabIndex = -1; }); n.tabIndex = 0; n.focus(); }
+      });
+    }
 
     var canvas = document.getElementById("paperCanvas");
     if (canvas) {

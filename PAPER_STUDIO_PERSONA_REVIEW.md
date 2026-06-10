@@ -1,6 +1,15 @@
 <!-- sentinel:skip-file - planning/design-decision doc -->
 # Paper Studio — multi-persona UX review (2026-06-10)
 
+> **BUILD STATUS** (owner chose the full roadmap B → C+gate → A → D):
+> - **B — left section navigator: DONE** (2026-06-10). 21 sections in 7 groups, accessible
+>   `<nav>` + roving-tabindex + AT state labels + click-to-focus + skip-link; mobile collapses
+>   to a tappable drawer with 44px targets. Verifier 95/95 → 100/100. The feared ~70px mobile
+>   writing width did NOT reproduce — a column-stack at ≤1024px already existed (persona claim
+>   of "no collapse below 640px" was wrong; there is a 1024px rule).
+> - **Next:** C (one-section wizard) + the substantive-gate upgrade (P0, ship together), then A, then D.
+
+
 Six target-user personas evaluated four proposed features before any build, per the
 product owner's request ("do the multi-persona review first, then decide if these ideas
 are the best ones"). Personas: **Amina** (anxious first-time author, ESL, East Africa),

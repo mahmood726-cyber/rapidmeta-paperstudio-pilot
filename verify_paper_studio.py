@@ -615,6 +615,47 @@ try:
     check("#7 Worked-example modal opens read-only with all sections, closes, never touches the draft",
           we.get("opened") and we.get("hasBanner") and we.get("sections") >= 10 and we.get("closed") and we.get("unchanged"), str(we))
 
+    # ======== Feature B: left section navigator ========
+    nav = d.execute_script("""
+        var p=document.getElementById('paperNavPanel');
+        var items=p.querySelectorAll('.nav-item');
+        return {count:items.length, groups:p.querySelectorAll('.nav-group').length,
+                hasNav:!!p.querySelector('nav[aria-label="Paper sections"]'),
+                roving:Array.prototype.filter.call(items,function(b){return b.tabIndex===0;}).length,
+                labelled:Array.prototype.every.call(items,function(b){return /— (complete|to write)/.test(b.getAttribute('aria-label')||'');}),
+                progress:(p.querySelector('.nav-progress')||{}).textContent||''};
+    """)
+    check("B: nav renders 21 sections in 7 groups, one tab-stop, AT state labels",
+          nav["count"] == 21 and nav["groups"] == 7 and nav["hasNav"] and nav["roving"] == 1 and nav["labelled"], str(nav))
+    navclick = d.execute_script("""
+        var btn=document.querySelector('#paperNavPanel .nav-item[data-nav-field="studentText.title"]');
+        btn.click();
+        var box=document.querySelector('#paperCanvas [data-field="studentText.title"]');
+        return {focused: document.activeElement===box, current: btn.getAttribute('aria-current')==='step'};
+    """)
+    check("B: clicking a section focuses its box and marks it aria-current", navclick["focused"] and navclick["current"], str(navclick))
+    navdone = d.execute_script("""
+        var box=document.querySelector('#paperCanvas [data-field="studentText.funding"]');
+        box.innerText='This work received no specific funding from any agency.';
+        box.dispatchEvent(new InputEvent('input',{bubbles:true}));
+        PaperStudio.updateChecklist();
+        var btn=document.querySelector('#paperNavPanel .nav-item[data-nav-field="studentText.funding"]');
+        return {done: btn.classList.contains('nav-done'), aria:/complete/.test(btn.getAttribute('aria-label')||'')};
+    """)
+    check("B: a filled section shows complete (glyph + AT label) in the nav", navdone["done"] and navdone["aria"], str(navdone))
+    navkey = d.execute_script("""
+        var items=document.querySelectorAll('#paperNavPanel .nav-item');
+        items[0].tabIndex=0; items[0].focus();
+        items[0].dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));
+        return {moved: items[1].tabIndex===0 && document.activeElement===items[1], firstReset: items[0].tabIndex===-1};
+    """)
+    check("B: roving tabindex — ArrowDown moves focus and the single tab stop", navkey["moved"] and navkey["firstReset"], str(navkey))
+    skip = d.execute_script("""
+        document.querySelector('#paperNavPanel [data-action="skip-to-writing"]').click();
+        return document.activeElement===document.querySelector('#paperCanvas [data-field="studentText.title"]');
+    """)
+    check("B: 'Skip to writing' jumps focus into the first section", skip, str(skip))
+
     # ---- console errors ----
     logs = d.get_log("browser")
     def noise(m):
