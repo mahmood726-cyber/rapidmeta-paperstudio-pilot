@@ -11079,10 +11079,23 @@ const ContinuousMDEngine = {
                 if (!sel) return;
 
 
-                // Collect all unique outcome labels across included trials
+                // Collect unique outcome keys across included trials. Dedupe on the
+                // KEY here, then again on the rendered LABEL below: two distinct
+                // shortLabels can map to the same display title (and 'default'
+                // echoes the top outcome's title), which previously produced
+                // visible duplicate options ("CV death" twice). Skip empty keys.
 
 
-                const allLabels = new Set(['default']);
+                const keys = [];
+
+
+                const seenKeys = new Set();
+
+
+                const pushKey = (k) => { if (k == null || k === '') return; const s = String(k); if (!seenKeys.has(s)) { seenKeys.add(s); keys.push(s); } };
+
+
+                pushKey('default');
 
 
                 const trials = this.state.trials?.filter(t => isIncludeLikeForAnalysis(t, this.realData) && t.data) ?? [];
@@ -11094,7 +11107,7 @@ const ContinuousMDEngine = {
                     for (const oc of (t.data.allOutcomes ?? [])) {
 
 
-                        allLabels.add(oc.shortLabel);
+                        pushKey(oc.shortLabel);
 
 
                     }
@@ -11106,7 +11119,41 @@ const ContinuousMDEngine = {
                 const current = this.state.selectedOutcome ?? 'default';
 
 
-                sel.innerHTML = [...allLabels].map(k => `<option value="${escapeHtml(k)}"${k === current ? ' selected' : ''}>${escapeHtml(this.outcomeLabel(k))}</option>`).join('');
+                // Dedupe on the visible label so the same outcome cannot appear
+                // twice (e.g. the auto 'default' entry vs its own explicit key).
+                // The 'default' key is always kept and given a stable, distinct
+                // caption so it never collides with a real outcome's title.
+                const seenLabels = new Set();
+
+
+                const options = [];
+
+
+                for (const k of keys) {
+
+
+                    const isDefault = (k === 'default');
+
+
+                    const label = isDefault ? `Primary outcome (auto: ${this.outcomeLabel('default')})` : this.outcomeLabel(k);
+
+
+                    const norm = String(label).trim().toLowerCase();
+
+
+                    if (!isDefault && seenLabels.has(norm)) continue;
+
+
+                    seenLabels.add(norm);
+
+
+                    options.push(`<option value="${escapeHtml(k)}"${k === current ? ' selected' : ''}>${escapeHtml(label)}</option>`);
+
+
+                }
+
+
+                sel.innerHTML = options.join('');
 
 
             },
