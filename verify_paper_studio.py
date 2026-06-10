@@ -764,6 +764,31 @@ try:
     check("A: Esc exits focus mode, restores chrome, returns focus to the toggle",
           fesc["off"] and fesc["tabsBack"] and fesc["focusReturned"] and "Focus mode" in fesc["label"], str(fesc))
 
+    # ======== Feature D: story-based teaching (real, named, sourced cases; label-free) ========
+    cc = d.execute_script("""
+        var cards=document.querySelectorAll('#paperCanvas .case-card');
+        var txt=Array.prototype.map.call(cards,function(c){return c.textContent;}).join(' ');
+        return {n:cards.length,
+                named:/ISIS-4|CRASH|FDA|Turner/.test(txt),
+                numbered:/58,050|10,000|74|1\\.18|a third/.test(txt),
+                sourced:/Source:/.test(txt),
+                rule:!!document.querySelector('#paperCanvas .case-card .case-rule'),
+                secular:!/\\b(god|allah|quran|scripture|prophet|holy|surah)\\b/i.test(txt),
+                collapsed:Array.prototype.every.call(cards,function(c){return c.tagName==='DETAILS' && !c.open;}),
+                noClean:Array.prototype.every.call(cards,function(c){return c.classList.contains('no-clean-pdf');})};
+    """)
+    check("D: real-trial teaching cards — named, numbered, sourced, rule, secular, collapsed, export-clean",
+          cc["n"] >= 3 and cc["named"] and cc["numbered"] and cc["sourced"] and cc["rule"] and cc["secular"] and cc["collapsed"] and cc["noClean"], str(cc))
+    cchide = d.execute_script("""
+        document.body.classList.remove('tips-hidden');
+        var c=document.querySelector('#paperCanvas .case-card'); var shown=c?c.offsetParent!==null:false;
+        document.body.classList.add('tips-hidden');
+        var hidden=c?c.offsetParent===null:false;
+        document.body.classList.remove('tips-hidden');
+        return {shown:shown, hidden:hidden};
+    """)
+    check("D: 'Hide tips' hides the teaching cards (optional, dismissible)", cchide["shown"] and cchide["hidden"], str(cchide))
+
     # ---- console errors ----
     logs = d.get_log("browser")
     def noise(m):

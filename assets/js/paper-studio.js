@@ -199,6 +199,16 @@
   function story(body) {
     return '<details class="story-card no-clean-pdf"><summary>📖 The idea, as a short story</summary><p>' + body + '</p></details>';
   }
+  // A REAL, named, sourced trial case that teaches a method point. Uses direct address and a
+  // question-then-answer rhythm, and ALWAYS ends on a number + a memorable method rule (never a
+  // ready-made sentence about the student's own data). Collapsed, optional, never exported.
+  function caseStudy(headline, body, rule, source) {
+    return '<details class="case-card no-clean-pdf"><summary>🔎 A real example: ' + esc(headline) + '</summary>' +
+      '<div class="case-body"><p>' + esc(body) + '</p>' +
+      (rule ? '<p class="case-rule">' + esc(rule) + '</p>' : '') +
+      (source ? '<p class="case-source">Source: ' + esc(source) + '</p>' : '') +
+      '</div></details>';
+  }
 
   // First-time "Start here" card. Dismissible; stays dismissed via localStorage.
   function onboardingCard() {
@@ -489,6 +499,10 @@
     html += '<div class="section-example no-clean-pdf"><span class="ex-good">✓ If your CI crosses the line:</span> The estimate pointed toward the intervention, but the confidence interval crossed the no-effect line, so the data are also compatible with no real difference; the result is uncertain rather than clearly positive.</div>';
     html += helper("“How big is clinically big?” — there is no universal threshold for whether an effect matters in practice. If you are not sure, it is completely fine to say the size is uncertain and to flag it for your supervisor; saying so is good scientific judgement, not a weakness. " + learnChip("clinical_importance"));
     html += story("A merchant weighs a sack of grain just once and announces its worth. A wiser one weighs it many times, takes the average, and notes how far the readings spread. The average is your pooled estimate; the spread is your confidence interval. A narrow spread: speak with some confidence. A wide spread: speak softly. And weighing carefully tells you the weight — not whether the grain is worth buying. That last question — is it worth it? — is yours to judge.");
+    html += caseStudy("when more data flipped the answer",
+      "A wide confidence interval is a warning, not a verdict. Before 2004 the smaller studies left it unclear whether steroids helped severe head injury, and many clinicians assumed they did. Then the CRASH trial randomised over 10,000 patients and found steroids actually increased deaths, with a relative risk of about 1.18. A wide, uncertain estimate had been resolved — and the direction reversed. So when your interval is wide, say so, and hold your conclusion loosely until the data are precise.",
+      "Until the interval is narrow, hold your conclusion loosely.",
+      "CRASH trial, Lancet 2004.");
 
     html += renderOutcomeSections();   // one section per secondary outcome
 
@@ -506,6 +520,10 @@
     html += example("I² was low and τ² close to zero, so the three trials gave broadly consistent results; with only three studies this agreement should be read cautiously rather than as proof.",
       "There was no heterogeneity so the studies all agree.");
     html += story("A traveller crossing a wide land does not trust a single well. She drinks from many. If every well runs sweet, she grows confident the water is good. If some run sweet and some run bitter, she asks why — different ground, different depth — before she trusts any. Your studies are the wells. Agreement across many is reassuring; disagreement is a question to answer, not a flaw to hide. And with only two or three wells, even sweet water proves little — there were simply too few to know.");
+    html += caseStudy("when many small trials agreed — and one big trial did not",
+      "Should you trust a benefit that keeps appearing across several small trials? In the early 1990s, small trials and an early meta-analysis suggested magnesium lowered deaths after a heart attack. Then one very large, carefully run trial, ISIS-4, enrolled 58,050 patients — and found no benefit at all. The hopeful pattern in the small studies had not survived. For you: a signal repeated across small trials is a question, not an answer, and heterogeneity together with study size tells you how much to trust it.",
+      "One large, careful trial can outweigh many small, hopeful ones.",
+      "ISIS-4, Lancet 1995; Egger & Davey Smith, BMJ 1995.");
 
     html += '<h3>Risk of bias</h3>';
     html += helper("Risk of bias asks whether the way a study was run could have distorted its result — separate from whether the study is “good”. Link each concern to <em>how</em> it could change the answer.");
@@ -527,6 +545,10 @@
     html += helper("Optional. A funnel plot explores whether small studies are missing, which can be a sign of publication bias — but an uneven (asymmetric) funnel can also come from real differences between studies or from chance, and the plot is unreliable with fewer than about 10 studies. With few studies, describe what you see but do not conclude there is publication bias.");
     html += figureCard(6, "Funnel plot", ["funnel_plot"], "funnelPaperSlot", "figures.funnelPlot.caption",
       "The funnel plot suggests... However, funnel plots are difficult to interpret when...");
+    html += caseStudy("the studies that were never published",
+      "If only the flattering studies get published, what happens to a meta-analysis? Researchers obtained all 74 antidepressant trials registered with the US drug regulator (the FDA). Almost every positive trial was published; most negative ones were not, or were written up to look positive. When the missing trials were put back in, the apparent benefit shrank by about a third. That gap between what was run and what you can see is exactly what a funnel plot is trying to expose.",
+      "The studies you cannot see can change the answer.",
+      "Turner et al., New England Journal of Medicine 2008;358:252-260.");
 
     /* discussion */
     html += '<h2>Discussion</h2>';
