@@ -16,9 +16,15 @@
 >   progressbar; persisted "Show all" escape hatch; nav-jump switches steps; never hard-locks
 >   Next; figures resize on reveal; export/preview/print force the whole paper (no truncated PDF).
 >   Default ON for first-timers (empty draft). Verifier 101 → 107.
-> - **Next:** A (full-screen / focus mode), then D (story-based teaching, label-free).
->   Deferred wizard enhancements from the review: the post-Results coherence checkpoint and the
->   mandatory whole-paper read-through step (anti-fragmentation) — add on top of this stable base.
+> - **A — focus mode: DONE** (ffd0fff). CSS full-screen (not the Fullscreen API): a toggle hides
+>   the host chrome (banner/header/tabs) via display:none (removes them from tab order + a11y
+>   tree); Esc exits + returns focus; persistent provenance strip; not persisted across reload.
+> - **D — story-based teaching: DONE** (892327c). Label dropped (codebase confirmed secular);
+>   3 real/named/sourced trial cases (CRASH, ISIS-4, Turner-FDA) each ending on a number + a
+>   method rule, collapsed/optional/export-clean, hidden by "Hide tips".
+> - **ROADMAP COMPLETE** (B, gate, C, A, D). Verifier **111/111**. Branch `paper-studio-ux-fixes`,
+>   NOT pushed. Deferred (optional polish): the post-Results coherence checkpoint and the
+>   mandatory whole-paper read-through step (anti-fragmentation) on top of this stable base.
 
 
 Six target-user personas evaluated four proposed features before any build, per the
