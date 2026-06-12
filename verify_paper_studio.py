@@ -16,10 +16,60 @@ opts.add_argument("--headless=new")
 opts.add_argument("--window-size=1400,1000")
 opts.set_capability("goog:loggingPrefs", {"browser": "ALL"})
 
-d = webdriver.Chrome(options=opts)
 results = []
 def check(name, cond, extra=""):
     results.append((name, bool(cond), extra)); print(("PASS" if cond else "FAIL"), "-", name, ("| " + extra) if extra else "")
+
+# ---- P1-7: parity guard against the finerenone-deployed copies ----
+# The canonical pilot paper-*.js are the source of truth for the proven-correct fixes that
+# were carried over from the (newer) finerenone deployment. The finerenone copies are CRLF;
+# the pilot is LF — so we strip CR before comparing or every line looks different. We do NOT
+# require whole-file identity: the finerenone copies intentionally diverge (Declarations /
+# Supplementary auto-sections, stricter word floors, a fieldLabel helper, etc.) that the lean
+# pilot does not carry. Instead we (a) report per-file CR-insensitive drift as information and
+# (b) FAIL if any proven-correct fix signature drifts out of EITHER file.
+def _parity_guard():
+    fin_dir = pathlib.Path(r"C:/Projects/rapidmeta-finerenone/assets/js")
+    pilot_dir = pathlib.Path(__file__).resolve().parent / "assets" / "js"
+    files = ["paper-export.js", "paper-figures.js", "paper-formats.js",
+             "paper-learning-links.js", "paper-readiness-checks.js",
+             "paper-studio.js", "paper-supplementary.js"]
+    if not fin_dir.exists():
+        check("P1-7 parity: finerenone-deployed copies present", False,
+              f"missing {fin_dir} — cannot run parity guard")
+        return
+    # Proven-correct fixes that MUST stay in lockstep across pilot + finerenone (CR-stripped).
+    # file -> list of substrings that must appear in BOTH copies.
+    fix_signatures = {
+        "paper-figures.js": ["z: 2.58"],
+        "paper-formats.js": ['g("studentText.discussionComparison"), g("studentText.discussionTransportability")'],
+        "paper-readiness-checks.js": ["Your pooled result has not loaded"],
+    }
+    def norm(p):
+        return p.read_text(encoding="utf-8", errors="replace").replace("\r", "")
+    for f in files:
+        pf, ff = pilot_dir / f, fin_dir / f
+        if not pf.exists():
+            check(f"P1-7 parity: pilot has {f}", False, f"missing {pf}"); continue
+        ptxt, ftxt = norm(pf), norm(ff)
+        # (a) informational drift count (CR-insensitive) — never a hard fail by itself.
+        pl, fl = ptxt.splitlines(), ftxt.splitlines()
+        import difflib
+        drift = sum(1 for ln in difflib.unified_diff(pl, fl, lineterm="", n=0)
+                    if ln and ln[0] in "+-" and not ln.startswith(("+++", "---")))
+        identical = (ptxt == ftxt)
+        check(f"P1-7 parity[info]: {f} CR-insensitive drift vs finerenone",
+              True, "identical" if identical else f"{drift} differing line(s) (intentional divergence allowed)")
+        # (b) hard gate: each proven-correct fix signature must be in BOTH copies.
+        for sig in fix_signatures.get(f, []):
+            in_pilot, in_fin = (sig in ptxt), (sig in ftxt)
+            check(f"P1-7 parity: fix signature present in BOTH copies — {f}: {sig[:48]}",
+                  in_pilot and in_fin,
+                  f"pilot={in_pilot} finerenone={in_fin}")
+
+_parity_guard()
+
+d = webdriver.Chrome(options=opts)
 
 try:
     d.get(URL); time.sleep(3)
@@ -319,6 +369,83 @@ try:
         } catch(e){ done(0); }
     """)
     check("Export pipeline returns figure blobs for bundling", zipsize == 1)
+
+    # ---- P1-6: offline headless export smoke ----
+    # Catch future silent-drop bugs (cf. P0-3, where the Discussion/Transportability text
+    # was collected but buildManuscript never emitted it). We override URL.createObjectURL
+    # to capture the blob each public exporter hands to its private download helper, then
+    # assert every blob (Markdown, HTML, Word) carries: a unique sentinel placed in the
+    # Transportability field, the heading of every section the manuscript model collected,
+    # and the rendered figures (a "Figure N." marker; an embedded data: image for HTML/Word).
+    d.set_script_timeout(30)
+    smoke = d.execute_async_script("""
+        var done = arguments[arguments.length-1];
+        try {
+          var SENTINEL = 'TRANSPORT_SENTINEL_7Q3';
+          // getField reads the contenteditable box first (DOM wins over state), so write the
+          // sentinel into the box and fire input — exactly how a student would type it.
+          var box = document.querySelector('#paperCanvas [data-field="studentText.discussionTransportability"]');
+          box.innerText = 'The pooled estimate applies most directly to trial-like patients. ' + SENTINEL;
+          box.dispatchEvent(new InputEvent('input', {bubbles:true}));
+          // Headings the manuscript model actually collects right now (source of truth).
+          var m = PaperStudio.buildManuscript();
+          var heads = m.sections.filter(function(s){return s.h;}).map(function(s){return s.h;});
+          var hasFigSection = m.sections.some(function(s){return s.fig;});
+          // Capture every blob the exporters create.
+          var caught = [];
+          var realCreate = URL.createObjectURL;
+          URL.createObjectURL = function(blob){ caught.push(blob); return realCreate.call(URL, blob); };
+          // Markdown is synchronous; HTML/Word resolve a figure-image Promise before dl().
+          PaperStudio.exportMarkdown();
+          PaperStudio.exportHTML();
+          PaperStudio.exportWord();
+          // Give the async (figure-embedding) exporters time to resolve and call dl().
+          setTimeout(function(){
+            URL.createObjectURL = realCreate;  // restore
+            Promise.all(caught.map(function(b){ return b.text().then(function(t){ return {type:b.type, size:b.size, text:t}; }); }))
+              .then(function(blobs){
+                function classify(b){
+                  if (/markdown/.test(b.type)) return 'md';
+                  if (/msword/.test(b.type)) return 'word';
+                  if (/html/.test(b.type)) return 'html';
+                  return 'other';
+                }
+                var byType = {};
+                blobs.forEach(function(b){ byType[classify(b)] = b; });
+                function report(b){
+                  if (!b) return {present:false};
+                  return {
+                    present: true,
+                    bytes: b.size,
+                    sentinel: b.text.indexOf(SENTINEL) >= 0,
+                    allHeads: heads.every(function(h){ return b.text.indexOf(h) >= 0; }),
+                    figureMarker: /Figure\\s*1/.test(b.text),
+                    embeddedImg: /src=['\"]data:image/.test(b.text)
+                  };
+                }
+                done({ heads: heads, hasFigSection: hasFigSection, nBlobs: blobs.length,
+                       md: report(byType.md), html: report(byType.html), word: report(byType.word) });
+              });
+          }, 4000);
+        } catch(e){ done({err: String(e)}); }
+    """)
+    check("P1-6 smoke: all three exporters produced a blob",
+          isinstance(smoke, dict) and smoke.get("md", {}).get("present") and smoke.get("html", {}).get("present") and smoke.get("word", {}).get("present"),
+          str({k: smoke.get(k) for k in ("err", "nBlobs")} if isinstance(smoke, dict) else smoke))
+    check("P1-6 smoke: Markdown export carries every section + transportability text + figure",
+          smoke.get("md", {}).get("sentinel") and smoke.get("md", {}).get("allHeads") and smoke.get("md", {}).get("figureMarker") and smoke.get("md", {}).get("bytes", 0) > 0,
+          str(smoke.get("md")))
+    check("P1-6 smoke: HTML export carries every section + transportability text + embedded figure image",
+          smoke.get("html", {}).get("sentinel") and smoke.get("html", {}).get("allHeads") and smoke.get("html", {}).get("embeddedImg") and smoke.get("html", {}).get("bytes", 0) > 0,
+          str(smoke.get("html")))
+    check("P1-6 smoke: Word export carries every section + transportability text + embedded figure image",
+          smoke.get("word", {}).get("sentinel") and smoke.get("word", {}).get("allHeads") and smoke.get("word", {}).get("embeddedImg") and smoke.get("word", {}).get("bytes", 0) > 0,
+          str(smoke.get("word")))
+    figbytes = d.execute_async_script("""
+        var done=arguments[arguments.length-1];
+        PaperStudio.figureBlob('forest','png').then(function(b){ b.arrayBuffer().then(function(ab){ done(new Uint8Array(ab).length); }); }).catch(function(e){ done(-1); });
+    """)
+    check("P1-6 smoke: figureBlob returns non-empty bytes", isinstance(figbytes, int) and figbytes > 0, f"bytes={figbytes}")
 
     # ---- supplementary + autosave hardening (Batch 3) ----
     sup = d.execute_script("""
@@ -664,8 +791,8 @@ try:
                 labelled:Array.prototype.every.call(items,function(b){return /— (complete|to write)/.test(b.getAttribute('aria-label')||'');}),
                 progress:(p.querySelector('.nav-progress')||{}).textContent||''};
     """)
-    check("B: nav renders 21 sections in 7 groups, one tab-stop, AT state labels",
-          nav["count"] == 21 and nav["groups"] == 7 and nav["hasNav"] and nav["roving"] == 1 and nav["labelled"], str(nav))
+    check("B: nav renders 22 sections in 7 groups, one tab-stop, AT state labels",
+          nav["count"] == 22 and nav["groups"] == 7 and nav["hasNav"] and nav["roving"] == 1 and nav["labelled"], str(nav))
     navclick = d.execute_script("""
         var btn=document.querySelector('#paperNavPanel .nav-item[data-nav-field="studentText.title"]');
         btn.click();

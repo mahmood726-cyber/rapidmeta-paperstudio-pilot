@@ -182,6 +182,14 @@
         issues.push({ level: "error", field: f[0], msg: "Write it in your own words — \"" + f[1] + "\" is still almost identical to the example. Change it to describe YOUR study." });
       }
     });
+    // 4a-bis. The pooled result must actually have loaded — otherwise the auto Abstract/Results
+    // export a "result" made entirely of em-dashes ("— (— to —, 95% CI), I² = —%"). The student
+    // fields can all be complete while the numbers never computed, so guard it explicitly.
+    var an = (PS.state && PS.state.analysis) || {};
+    var blank = function (val) { var t = String(val == null ? "" : val).trim(); return t === "" || t === "—" || t === "-"; };
+    if (blank(an.effectEstimate) || (blank(an.ciLower) && blank(an.ciUpper))) {
+      issues.push({ level: "error", field: "studentText.forestInterpretation", msg: "Your pooled result has not loaded (the effect/CI are blank) — open the Analysis tab and run/refresh the analysis before exporting, so the paper doesn't show a result made of dashes." });
+    }
     // 4b. Significance vs the no-effect line: cannot claim "significant" when the CI crosses null.
     var a = (PS.state && PS.state.analysis) || {};
     var lci = num(a.ciLower), uci = num(a.ciUpper);

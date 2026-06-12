@@ -140,7 +140,7 @@
       var logCenter = cont ? pooledEff : Math.log(pooledEff);
       var baseSE = maxSE * 1.06;
       var lim = function (se, z, sign) { var v = logCenter + sign * z * se; return cont ? v : Math.exp(v); };
-      [{ z: 1.96, dash: "dot" }, { z: 3.29, dash: "dash" }].forEach(function (b, i) {
+      [{ z: 1.96, dash: "dot" }, { z: 2.58, dash: "dash" }].forEach(function (b, i) {   // 95% + 99% (z=2.58); z=3.29 is 99.9%, not 99%
         ["L", "R"].forEach(function (side) {
           var sign = side === "L" ? -1 : 1;
           traces.push({

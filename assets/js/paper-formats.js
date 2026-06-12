@@ -158,8 +158,9 @@
     secs.push({ h: "Discussion", lvl: 2 });
     secs.push({ para: [
       g("studentText.discussionPrincipalFinding"), g("studentText.discussionClinicalMeaning"),
-      g("studentText.discussionComparison"), g("studentText.discussionStrengths"),
-      g("studentText.discussionLimitations"), g("studentText.discussionConclusion")
+      g("studentText.discussionComparison"), g("studentText.discussionTransportability"),
+      g("studentText.discussionStrengths"), g("studentText.discussionLimitations"),
+      g("studentText.discussionConclusion")
     ].filter(nonblank) });
 
     var refs = g("studentText.references");

@@ -1124,7 +1124,7 @@
       }).join("");
       return '<li class="nav-group"><div class="nav-group-title">' + esc(g.group) + '</div><ul role="list">' + items + '</ul></li>';
     }).join("");
-    // Default open on desktop, collapsed on phones (a 21-item list on top of a small screen
+    // Default open on desktop, collapsed on phones (a 22-item list on top of a small screen
     // is itself a wall); preserve the user's open/closed choice across refreshes.
     var existing = panel.querySelector(".section-nav-wrap");
     var openAttr = (existing ? existing.open : window.innerWidth > 700) ? " open" : "";
