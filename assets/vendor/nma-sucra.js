@@ -80,10 +80,39 @@
     return { mean: WY2 / W2, se: Math.sqrt(1/W2), k: points.length, tau2 };
   }
 
-  // Box-Muller normal sample
+  // Deterministic PRNG (mulberry32) so SUCRA/POTH are reproducible run-to-run
+  // (rules.md: seeded PRNG for determinism). Seeded per render from the data.
+  let _rngState = 0x9e3779b9 >>> 0;
+  function _seedRng(seed) { _rngState = (seed >>> 0) || (0x9e3779b9 >>> 0); }
+  function _rand() {
+    _rngState = (_rngState + 0x6D2B79F5) | 0;
+    let t = Math.imul(_rngState ^ (_rngState >>> 15), 1 | _rngState);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  // Box-Muller normal sample (seeded)
   function rnorm() {
-    const u = Math.max(1e-12, Math.random()), v = Math.random();
+    const u = Math.max(1e-12, _rand()), v = _rand();
     return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  // Wigle 2025 POTH (Precision Of Treatment Hierarchy): S²/S²max of the SUCRA
+  // values (in [0,1]). POTH < 0.5 ⇒ the hierarchy is non-informative and no
+  // single "best" treatment may be claimed. Identical closed form to the
+  // canonical poth.js / AlmPOTH, computed inline so this panel needs no extra
+  // script tag (most NMA apps load nma-sucra.js without poth.js).
+  function wiglePOTH(sucras01) {
+    const s = (sucras01 || []).filter(v => typeof v === 'number' && isFinite(v));
+    const n = s.length;
+    if (n < 2) return null;
+    let sumSq = 0;
+    for (let i = 0; i < n; i++) sumSq += (s[i] - 0.5) * (s[i] - 0.5);
+    const s2 = sumSq / n;
+    const s2max = (n + 1) / (12 * (n - 1));
+    let val = s2 / s2max;
+    if (val < 0) val = 0; if (val > 1) val = 1;
+    return val;
   }
 
   function pickReference(cfg, treatments) {
@@ -206,6 +235,15 @@
     if (benefitKW.test(outText) && !harmKW.test(outText)) betterDirection = 'higher';
     const J = tr.length;
 
+    // Seed the PRNG deterministically from the pooled effects so identical
+    // data yields identical SUCRA/POTH on every run.
+    let _seed = 2166136261 >>> 0;
+    tr.forEach(x => {
+      _seed = Math.imul(_seed ^ ((Math.round(x.mean * 1000)) | 0), 16777619);
+      _seed = Math.imul(_seed ^ ((Math.round(x.se * 1000)) | 0), 16777619);
+    });
+    _seedRng(_seed);
+
     // Monte Carlo: rank in each iteration
     const rankSums = tr.map(() => 0);
     const beatCounts = tr.map(() => 0);
@@ -230,15 +268,32 @@
     // Top-ranked = highest SUCRA
     const sorted = rows.slice().sort((a, b) => b.sucra - a.sucra);
     const top = sorted[0];
-    const summary = scale + ' scale · ' + J + ' treatments · top: ' + top.treatment + ' (SUCRA ' + P.fmt(top.sucra, 1) + '%, MR=' + P.fmt(top.meanRank, 2) + ')';
+
+    // POTH gate (Wigle 2025): only assert a single best treatment when the
+    // hierarchy is informative (POTH >= 0.5). Otherwise the ranks are too
+    // uncertain to crown a winner (advanced-stats NMA rule).
+    const poth = wiglePOTH(rows.map(r => r.sucra / 100));
+    const pothOK = typeof poth === 'number' && poth >= 0.5;
+    const pothNum = typeof poth === 'number' ? P.fmt(poth, 2) : 'n/a';
+    const pothStr = typeof poth === 'number' ? ' · POTH=' + pothNum : '';
+    const summary = pothOK
+      ? scale + ' scale · ' + J + ' treatments · top: ' + top.treatment + ' (SUCRA ' + P.fmt(top.sucra, 1) + '%, MR=' + P.fmt(top.meanRank, 2) + ')' + pothStr
+      : scale + ' scale · ' + J + ' treatments · hierarchy non-informative' + pothStr + ' — no top treatment claimed';
 
     // Build body
     let html = '';
     const dirText = betterDirection === 'higher' ? 'larger value = better (response/remission outcome detected)' : 'smaller value = better (harm/mortality outcome assumed)';
-    html += '<div style="background:#0e2540;border:1px solid #312e81;color:#c4b5fd;padding:8px 10px;border-radius:6px;margin-bottom:10px;font-size:11.5px;">'
-          + '<strong>Top-ranked:</strong> ' + top.treatment + ' — SUCRA ' + P.fmt(top.sucra, 1) + '% (mean rank ' + P.fmt(top.meanRank, 2) + ' of ' + J + '). '
-          + 'Reference: <code>' + reference + '</code>. Scale: <code>' + scale + '</code>. <em>Direction:</em> ' + dirText + '.'
-          + '</div>';
+    html += pothOK
+      ? '<div style="background:#0e2540;border:1px solid #312e81;color:#c4b5fd;padding:8px 10px;border-radius:6px;margin-bottom:10px;font-size:11.5px;">'
+        + '<strong>Top-ranked:</strong> ' + top.treatment + ' — SUCRA ' + P.fmt(top.sucra, 1) + '% (mean rank ' + P.fmt(top.meanRank, 2) + ' of ' + J + ', POTH ' + pothNum + '). '
+        + 'Reference: <code>' + reference + '</code>. Scale: <code>' + scale + '</code>. <em>Direction:</em> ' + dirText + '.'
+        + '</div>'
+      : '<div style="background:#3f1d1d;border:1px solid #7f1d1d;color:#fecaca;padding:8px 10px;border-radius:6px;margin-bottom:10px;font-size:11.5px;">'
+        + '<strong>Hierarchy non-informative (POTH ' + pothNum + ' &lt; 0.50).</strong> '
+        + 'Treatment ranks are statistically indistinguishable — no single treatment can be claimed best. '
+        + 'Highest SUCRA is ' + top.treatment + ' (' + P.fmt(top.sucra, 1) + '%) but the ranking is too uncertain to interpret. '
+        + 'Reference: <code>' + reference + '</code>. Scale: <code>' + scale + '</code>.'
+        + '</div>';
     html += buildBars(rows, betterDirection);
 
     // Per-treatment table
@@ -270,7 +325,7 @@
           + '<strong>Method:</strong> for each non-reference treatment, pool the trial-level log-OR (or MD) vs reference via DerSimonian-Laird random effects. '
           + 'Then ' + N_MC.toLocaleString() + ' Monte Carlo draws — sample each treatment from N(μ̂, σ̂²), rank, average ⇒ mean rank. '
           + 'SUCRA = (J − mean rank) / (J − 1) × 100 (Salanti J Clin Epidemiol 2011). '
-          + '<strong>Caveats:</strong> per advanced-stats.md / Wigle 2025 — SUCRA alone is unreliable when ranks are uncertain; should be paired with the POTH (Probability of Top-K Hierarchy) ranking-uncertainty index. '
+          + '<strong>Caveats:</strong> per Wigle 2025 — SUCRA alone is unreliable when ranks are uncertain, so the "top-ranked" claim above is GATED on the POTH (Precision Of Treatment Hierarchy, S²/S²max of the SUCRA values): when POTH &lt; 0.50 the hierarchy is non-informative and no single best treatment is asserted. '
           + 'Direction defaults to "smaller is better"; for outcomes where larger is better, interpret SUCRA as ranking against worst.'
           + '</div>';
 

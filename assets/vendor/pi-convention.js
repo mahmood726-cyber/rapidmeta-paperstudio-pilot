@@ -4,7 +4,7 @@
  * IntHout 2016 used t_{k-2}; the rules file mandates t_{k-1} (Cochrane v6.5 /
  * RevMan-2025 bit-reproducibility convention).
  *
- * HKSJ floor: replace SÊ² × max(1, Q/(k-1)) when Q < k-1 to prevent CI
+ * HKSJ floor: SÊ² × max(1, q*) with q* the RE-weighted statistic, to prevent CI
  * collapse below the DL random-effects width.
  *
  * This panel computes both for the primary pool and shows whether the
@@ -117,10 +117,17 @@
     const pi_lo = pool.yRE - t_crit * pi_se;
     const pi_hi = pool.yRE + t_crit * pi_se;
 
-    // HKSJ floor check
-    const Q_over_df = pool.df > 0 ? pool.Q / pool.df : 0;
-    const hksj_factor = Math.max(1, Q_over_df);
-    const floor_triggered = pool.Q < pool.df;
+    // HKSJ floor check. The Hartung-Knapp multiplier is the RE-WEIGHTED q* =
+    // (1/df)·Σ wRE_i·(y_i − yRE)², floored at 1 — NOT fixed-effect Q/df (which
+    // over-widens the CI when τ²>0). The floor is "active" when q*<1.
+    let qStar = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const w = 1 / (pts[i].vi + pool.tau2);
+      qStar += w * Math.pow(pts[i].yi - pool.yRE, 2);
+    }
+    qStar = pool.df > 0 ? qStar / pool.df : 0;
+    const hksj_factor = Math.max(1, qStar);
+    const floor_triggered = qStar < 1;
     const hksj_se = pool.seRE * Math.sqrt(hksj_factor);
     const hksj_lo = pool.yRE - t_crit * hksj_se;
     const hksj_hi = pool.yRE + t_crit * hksj_se;
@@ -143,17 +150,17 @@
       '<tr><td colspan="2" style="padding:6px 0 2px 8px;color:#94a3b8;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;">Prediction interval</td></tr>' +
       '<tr><td style="padding:3px 8px;color:#94a3b8;">PI = ŷ ± t × √(τ̂²+SÊ²)</td><td style="color:#7dd3fc;">' + piStr + '</td></tr>' +
       '<tr><td colspan="2" style="padding:6px 0 2px 8px;color:#94a3b8;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;">HKSJ confidence interval</td></tr>' +
-      '<tr><td style="padding:3px 8px;color:#94a3b8;">Q / (k−1)</td><td style="color:#7dd3fc;">' + P.fmt(Q_over_df, 3) + '</td></tr>' +
-      '<tr><td style="padding:3px 8px;color:#94a3b8;">Inflation factor max(1, Q/df)</td><td style="color:' + (floor_triggered ? '#fbbf24' : '#7dd3fc') + ';">' + P.fmt(hksj_factor, 3) +
+      '<tr><td style="padding:3px 8px;color:#94a3b8;">q* (RE-weighted, /df)</td><td style="color:#7dd3fc;">' + P.fmt(qStar, 3) + '</td></tr>' +
+      '<tr><td style="padding:3px 8px;color:#94a3b8;">Inflation factor max(1, q*)</td><td style="color:' + (floor_triggered ? '#fbbf24' : '#7dd3fc') + ';">' + P.fmt(hksj_factor, 3) +
         (floor_triggered ? '  <span style="color:#fbbf24;">⚠ floor ACTIVE (Q&lt;df)</span>' : '') + '</td></tr>' +
       '<tr><td style="padding:3px 8px;color:#94a3b8;">HKSJ 95% CI</td><td style="color:#7dd3fc;">[' + fmtOnScale(hksj_lo) + ', ' + fmtOnScale(hksj_hi) + ']</td></tr>' +
       '</table>' +
       '<div style="margin-top:8px;font-size:10.5px;color:#64748b;line-height:1.5;">' +
       '<strong>Why this matters:</strong> Cochrane Handbook v6.5 (Nov 2024) §10.10.4.3 specifies t_{k−1} for the prediction interval, ' +
       'while IntHout/Higgins/Tudur Smith 2016 used t_{k−2}. Both are defensible but they differ. This engine reports t_{k−1} for ' +
-      'RevMan-2025 bit-reproducibility. The HKSJ floor max(1, Q/(k−1)) prevents the CI narrowing below the DL random-effects width ' +
-      'when Q&lt;df (Hartung 2008, Knapp 2003). When the floor is <em>active</em>, the HKSJ CI is intentionally widened. ' +
-      'See <code>~/.claude/rules/advanced-stats.md</code> for the full convention rule.' +
+      'RevMan-2025 bit-reproducibility. The HKSJ multiplier is the RE-weighted q* floored at 1 (max(1, q*)), which prevents the CI ' +
+      'narrowing below the DL random-effects width when q&lt;1 (Hartung 2008, Knapp 2003) without over-widening it when τ²&gt;0. ' +
+      'See the project methods note (Cochrane Handbook v6.5 §10.10.4.3) for the full convention.' +
       '</div>' +
       '</div>';
 
