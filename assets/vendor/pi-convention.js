@@ -152,7 +152,7 @@
       '<tr><td colspan="2" style="padding:6px 0 2px 8px;color:#94a3b8;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;">HKSJ confidence interval</td></tr>' +
       '<tr><td style="padding:3px 8px;color:#94a3b8;">q* (RE-weighted, /df)</td><td style="color:#7dd3fc;">' + P.fmt(qStar, 3) + '</td></tr>' +
       '<tr><td style="padding:3px 8px;color:#94a3b8;">Inflation factor max(1, q*)</td><td style="color:' + (floor_triggered ? '#fbbf24' : '#7dd3fc') + ';">' + P.fmt(hksj_factor, 3) +
-        (floor_triggered ? '  <span style="color:#fbbf24;">⚠ floor ACTIVE (Q&lt;df)</span>' : '') + '</td></tr>' +
+        (floor_triggered ? '  <span style="color:#fbbf24;">⚠ floor ACTIVE (q*&lt;1)</span>' : '') + '</td></tr>' +
       '<tr><td style="padding:3px 8px;color:#94a3b8;">HKSJ 95% CI</td><td style="color:#7dd3fc;">[' + fmtOnScale(hksj_lo) + ', ' + fmtOnScale(hksj_hi) + ']</td></tr>' +
       '</table>' +
       '<div style="margin-top:8px;font-size:10.5px;color:#64748b;line-height:1.5;">' +
