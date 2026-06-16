@@ -22,6 +22,8 @@
     q = Math.sqrt(-2 * Math.log(1 - p)); return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
   }
   function zFor(res) { var cl = Number(res && res.confLevel); if (!isFinite(cl) || cl <= 0) cl = 95; if (cl > 1) cl /= 100; return normInv(1 - (1 - cl) / 2); }
+  // Confidence level as integer percent for labels (bars honour confLevel via zFor).
+  function clPct(res) { var cl = Number(res && res.confLevel); if (!isFinite(cl) || cl <= 0) cl = 95; if (cl <= 1) cl *= 100; return Math.round(cl); }
   function num(v) { var n = Number(v); return isFinite(n) ? n : null; }
 
   var LIGHT = {
@@ -64,7 +66,7 @@
 
     // y categories: studies (top→bottom), then a gap, pooled, then PI label
     var yStudies = names.slice();
-    var yPooled = "◆ Pooled (95% CI)";
+    var yPooled = "◆ Pooled (" + clPct(res) + "% CI)";
     var yPI = piLo != null ? "Prediction interval" : null;
     var yCats = yStudies.concat([yPooled]); if (yPI) yCats.push(yPI);
 
@@ -104,7 +106,7 @@
     var layout = Object.assign({}, LIGHT, {
       title: { text: opts.label ? "Forest plot — " + opts.label : "Forest plot", font: { size: 13 } },
       xaxis: {
-        title: { text: measure + " (95% CI)" }, type: cont ? "linear" : "log",
+        title: { text: measure + " (" + clPct(res) + "% CI)" }, type: cont ? "linear" : "log",
         zeroline: false, gridcolor: "#e5e7eb", linecolor: "#94a3b8",
         tickfont: { color: "#1f2933" }
       },

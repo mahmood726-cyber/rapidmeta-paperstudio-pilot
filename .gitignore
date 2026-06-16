@@ -3,3 +3,7 @@ __pycache__/
 .DS_Store
 .claude/
 PROGRESS.md
+sentinel-findings.jsonl
+sentinel-findings.md
+STUCK_FAILURES.jsonl
+STUCK_FAILURES.md

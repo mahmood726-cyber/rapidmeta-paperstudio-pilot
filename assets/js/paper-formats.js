@@ -145,7 +145,7 @@
     secs.push({ fig: "forest", label: "Forest plot — " + (pic.primaryOutcome || "primary outcome"), caption: g("figures.forestPlot.caption") });
     (PS.state.outcomes || []).forEach(function (oc) {
       secs.push({ h: "Secondary outcome: " + oc.label + (oc.illustrative ? " (illustrative demo data)" : ""), lvl: 3 });
-      secs.push({ para: ["For " + oc.label + ", the pooled " + (oc.measure || "effect") + " was " + (oc.est || "—") + " (" + (oc.lci || "—") + " to " + (oc.uci || "—") + ", 95% CI), I² = " + (oc.i2 || "—") + "%.", g("studentText.oc_" + oc.id + "_interp")].filter(nonblank) });
+      secs.push({ para: ["For " + oc.label + ", the pooled " + (oc.measure || "effect") + " was " + (oc.est || "—") + " (" + (oc.lci || "—") + " to " + (oc.uci || "—") + ", " + (oc.confLevel || x.confLevel || "95") + "% CI), I² = " + (oc.i2 || "—") + "%.", g("studentText.oc_" + oc.id + "_interp")].filter(nonblank) });
       secs.push({ fig: "oc_" + oc.id, label: "Forest plot — " + oc.label, caption: g("studentText.oc_" + oc.id + "_caption") });
     });
     secs.push({ h: "Heterogeneity", lvl: 3 });
